@@ -1,0 +1,32 @@
+{
+  "name": "4CIJ",
+  "version": "0.0.1",
+  "manifest_version": 2,
+  "description": "Injecting stuff",
+  "homepage_url": "https://4chan.org",
+  "content_scripts": [{
+    "matches": [
+      "https://boards.4chan.org/*",
+      "https://boards.4channel.org/*"
+    ],
+    "js": [ "loader.js" ],
+    "persistent": true
+  }],
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_title": "Inject!",
+    "default_popup": "popup/index.html"
+  },
+  "permissions": [
+    "https://*/*",
+    "http://*/*",
+    "activeTab"
+  ],
+  "web_accessible_resources": [
+    "base.js",
+    "helpers.js",
+    "agent.js",
+    "reporter.js",
+    "popup/popup.js"
+  ]
+}
