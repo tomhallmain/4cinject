@@ -2,7 +2,7 @@
   "name": "4CIJ",
   "version": "0.0.1",
   "manifest_version": 2,
-  "description": "Injecting stuff",
+  "description": "",
   "homepage_url": "https://4chan.org",
   "content_scripts": [{
     "matches": [
@@ -14,7 +14,7 @@
   }],
   "browser_action": {
     "default_icon": "icon.png",
-    "default_title": "Inject!",
+    "default_title": "4CIJ",
     "default_popup": "popup/index.html"
   },
   "permissions": [
