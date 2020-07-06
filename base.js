@@ -27,7 +27,7 @@ if (!gifsPage && threadPage) {
   .map( el => el.innerHTML = '' )
 
 if (threadPage) {
-  maxDigits();
+  console.log(maxDigits());
 };
 
 // General
