@@ -17,6 +17,9 @@
     "default_title": "4CIJ",
     "default_popup": "popup/index.html"
   },
+  "icons": {
+    "128": "icon.png"
+  },
   "permissions": [
     "https://*/*",
     "http://*/*",
