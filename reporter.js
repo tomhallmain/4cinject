@@ -5,11 +5,9 @@ function threadGraph(posts, includeNoRef) {
   posts = checkP(posts);
   var graph = {};
   posts.map( post => {
-    var postId = getPostId(post);
-    var pLinks = getQuoteLinks(post);
     var pBacklinks = getBacklinks(post);
     if (includeNoRef || pBacklinks.length > 0) {
-      graph[postId] = [pLinks, pBacklinks];
+      graph[getPostId(post)] = [getQuoteLinks(post), pBacklinks];
     };
   });
   return graph;
