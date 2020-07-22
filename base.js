@@ -4,19 +4,36 @@
 if (activeStyleSheet !== 'Tomorrow') {
   setActiveStyleSheet('Tomorrow');
 };
+
 const initialLink = window.location.href;
 const threadElement = document.querySelector('.thread');
 const threadId = threadElement?.id
+const quoteLinks = threadElement?.querySelector('.quoteLink');
+
 const gifsMatch = /4chan.org\/gif/;
 const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
+const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
-const quoteLinks = threadElement?.querySelector('.quoteLink');
+
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
+var catalogPage = catalogMatch.test(initialLink);
 var threadPage = threadMatch.test(initialLink);
 
-if (boardBasePage) {
-  window.location.replace(initialLink + 'catalog');
+function setOrderBy(order) {
+  orderSetting = '"orderby":"' + order + '"';
+  catalogSet = window.localStorage['catalog-settings'] != undefined
+  orderSet = catalogSet && window.localStorage['catalog-settings'].includes(orderSetting);
+  if (!orderSet) {
+    catalogSetting = '{"extended":true,"large":false,' + orderSetting +'}';
+    window.localStorage['catalog-settings'] = catalogSetting;
+    if (catalogPage) {  window.location.reload() };
+  };
+};
+
+if (boardBasePage || catalogPage) {
+  setOrderBy('date')
+  if (boardBasePage) { window.location.replace(initialLink + 'catalog') };
 };
 if (!gifsPage && threadPage) {
   expandImages();
@@ -123,7 +140,8 @@ observeDOM( document.body, function(m) {
     var added = record.addedNodes[0];
     if (added?.className == 'expandedWebm') {
       var video = added;
-      unmute(video);
+      unmute(video)
+      video.volume = 0.5;
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     };

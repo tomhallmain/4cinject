@@ -1,4 +1,6 @@
 
+// TODO: Add slider for global tab volumne
+
 // Setup
 
 document.addEventListener('DOMContentLoaded', function() {
