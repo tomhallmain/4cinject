@@ -35,17 +35,43 @@ if (boardBasePage || catalogPage) {
   setOrderBy('date')
   if (boardBasePage) { window.location.replace(initialLink + 'catalog') };
 };
-if (!gifsPage && threadPage) {
-  expandImages();
-  // Other boards may have threads that contain videos, but there are usually fewer
-};
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
   .map( el => el.innerHTML = '' )
 
-if (threadPage) {
-  console.log(maxDigits());
+
+function sleepAsync(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function loadData(func, callback) {
+  //const name = (eval("" funct ""))
+  while(typeof func !== "function") {
+    await sleepAsync(400);
+  };
+  callback();
 };
+
+window.addEventListener('error', function(e) {
+    console.log(e);
+}, true);
+
+if (threadPage) {
+  loadData(maxDigits, function() {
+    const digits = maxDigits()
+    if (digits) console.log(digits);
+  });
+};
+
+if (!gifsPage && threadPage) {
+  loadData(expandImages, function() {
+    expandImages();
+    // Other boards may have threads that contain videos, but there are usually fewer
+  });
+};
+
+var expandImages = function() { };
+var maxDigits = function() { };
 
 // General
 

@@ -8,7 +8,12 @@ function open(thumbImgs) {
   for (var i = 0; i < thumbImgs.length; i++) {
     setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
   };
-  console.log('Opened ' + thumbImgs.length + ' file thumbs');
+  const opened = thumbImgs.length
+  if (opened > 0) {
+    console.log('Opened ' + thumbImgs.length + ' file thumbs');
+  } else {
+    console.log('Could not find any image thumbs to expand');
+  };
 };
 function openAll(thumbImgs) {
   thumbImgs = thumbImgs || getThumbImgs();
