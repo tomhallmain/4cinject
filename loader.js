@@ -9,12 +9,15 @@ function loadScript(fileName) {
 files = ['helpers.js', 'agent.js', 'reporter.js', 'base.js']
 files.map( file => loadScript(file) );
 
-chrome.runtime.onMessage.addListener(messageHandler);
+chrome.runtime.onMessage.addListener(messageIn);
 
-function messageHandler(message) {
-  console.log('Content script received message: ' + message);
-  event = (function(message) {
-    switch (message) {
+function messageIn(message) {
+  console.log('Content script received message: ');
+  console.log(message);
+  var action = message['action'];
+  var filterSettings = message['filterSettings'];
+  event = (function(action, filterSettings) {
+    switch (action) {
       case 'expand': return 'open()'; break;
       case 'close': return 'close()'; break;
       case 'digits': return 'console.log(numbersGraph())'; break;
@@ -22,9 +25,15 @@ function messageHandler(message) {
       case 'threadGraph': return 'threadGraph()'; break;
       case 'subthreads': return 'subthreads()'; break;
       case 'contentExtract': return 'contentExtract()'; break;
+      case 'setVolume': 
+        return 'setVolume(' + filterSettings['volume']/100 + ')';
+        break;
+      case 'getVolume': 
+        messageOut('volume', window.localStorage['volume']);
+        break;
       default: console.log('Message not understood');
     };
-  })(message);
+  })(action, filterSettings);
   console.log(event);
   if (event) fireEvent(event);
 };
@@ -35,5 +44,10 @@ function fireEvent(toFire) {
   (document.head || document.documentElement).appendChild(s);
 };
 
-
+function messageOut(message, data) {
+  chrome.runtime.sendMessage({
+    msg: message, 
+    data: data
+  });
+};
 

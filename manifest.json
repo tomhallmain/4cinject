@@ -23,7 +23,8 @@
   "permissions": [
     "https://*/*",
     "http://*/*",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "web_accessible_resources": [
     "base.js",

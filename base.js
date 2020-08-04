@@ -31,6 +31,19 @@ function setOrderBy(order) {
   };
 };
 
+function setVolume(volume) {
+  window.localStorage['volume'] = volume
+  getAudioWebms().forEach( webm => webm.volume = volume );
+};
+
+function getVolume() {
+  return window.localStorage['volume']
+};
+
+if (!getVolume()) { // Set initial volume to 50%
+  setVolume(0.5);
+};
+
 if (boardBasePage || catalogPage) {
   setOrderBy('date')
   if (boardBasePage) { window.location.replace(initialLink + 'catalog') };
@@ -53,7 +66,7 @@ async function loadData(func, callback) {
 };
 
 window.addEventListener('error', function(e) {
-    console.log(e);
+  console.log(e);
 }, true);
 
 if (threadPage) {
@@ -70,8 +83,10 @@ if (!gifsPage && threadPage) {
   });
 };
 
+// Defined temporarily to be overwritten
 var expandImages = function() { };
 var maxDigits = function() { };
+
 
 // General
 
@@ -131,9 +146,11 @@ function getBacklinks(post) {
       .map( tag => parseInt(tag.hash.slice(2)) );
   } else { return [] };
 };
-
 function hasAudio(videoElement) {
   return videoElement.audioTracks.length > 0;
+};
+function getAudioWebms() {
+  return getExpandedWebms().filter( webm => hasAudio(webm) );
 };
 
 
@@ -167,7 +184,7 @@ observeDOM( document.body, function(m) {
     if (added?.className == 'expandedWebm') {
       var video = added;
       unmute(video)
-      video.volume = 0.5;
+      video.volume = getVolume();
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     };
