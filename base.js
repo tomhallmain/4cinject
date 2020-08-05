@@ -16,6 +16,7 @@ const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = [];
+var shiftPressed = false;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
@@ -100,6 +101,20 @@ function getPosts() {
 function getPostFromElement(el) {
   return el.closest('.post');
 };
+function nextPost(post) {
+  if (post) {
+    return post.parentElement.nextSibling.querySelector('.post');
+  } else {
+    return getOriginalPost();
+  };
+};
+function previousPost(post) {
+  if (post) {
+    return post.parentElement.previousSibling.querySelector('.post');
+  } else {
+    return getOriginalPost();
+  };
+};
 function getPostId(post) {
   return post.id.slice(1);
 };
@@ -112,17 +127,26 @@ function getPostById(id) {
 function getOriginalPost() {
   return threadElement.querySelector('.post.op');
 };
-function getThumbs() {
-  return [].slice.call(threadElement.querySelectorAll('.fileThumb'));
+function getThumbs(el) {
+  el = el || threadElement;
+  return [].slice.call(el.querySelectorAll('.fileThumb'));
 };
 function getThumb(video) {
   return video.previousSibling;
 };
-function getThumbImgs(thumbs) {
+function getThumbImg(thumb) {
+  return thumb.querySelector('img');
+};
+function getThumbImgs(thumbs, includeHidden) {
   thumbs = checkT(thumbs);
-  return thumbs.reduce( (imgs, thumb) => 
-    (thumb.style.display === '' && thumb.querySelector('img')
-    && imgs.push(thumb.querySelector('img')), imgs), [] );
+  if (includeHidden) {
+    return thumbs.reduce( (imgs, thumb) => (thumb.querySelector('img')
+      && imgs.push(thumb.querySelector('img')), imgs), [] );
+  } else {
+    return thumbs.reduce( (imgs, thumb) => 
+      (thumb.style.display === '' && thumb.querySelector('img')
+      && imgs.push(thumb.querySelector('img')), imgs), [] );
+  };
 };
 function getExpandedImgs(thumbs) {
   thumbs = checkT(thumbs);
@@ -190,7 +214,6 @@ var observeDOM = (function(){
 })();
 
 
-// Observe a specific DOM element:
 observeDOM( document.body, function(m) { 
   m.forEach( record => { 
     var added = record.addedNodes[0];
@@ -214,18 +237,46 @@ observeDOM( document.body, function(m) {
 window.addEventListener("keydown", function (event) {
   if (event.defaultPrevented) {
     return; // Do nothing if the event was already processed
-  }
+  };
 
   switch (event.key) {
+    case "Shift":
+      shiftPressed = true
+      break;
     case "ArrowLeft":
-      closeVideo(last(openedWebms));
+      if (shiftPressed) {
+        closeVideo(last(openedWebms));
+      } else {
+        var currentVideo = last(openedWebms);
+        openPreviousVideo(currentVideo);
+        if (currentVideo) closeVideo(currentVideo);
+      };
       break;
     case "ArrowRight":
-      openVideo(last(closedWebmThumbs));
+      var currentVideo = last(openedWebms);
+      openNextVideo(currentVideo);
+      if (currentVideo) closeVideo(currentVideo);
       break;
     default:
       return; // Quit when this doesn't handle the key event.
+  };
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
+
+window.addEventListener("keyup", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
   }
+
+  switch (event.key) {
+    case "Shift":
+      shiftPressed = false;
+      break;
+    default:
+      return; // Quit when this doesn't handle the key event.
+  };
 
   // Cancel the default action to avoid it being handled twice
   event.preventDefault();

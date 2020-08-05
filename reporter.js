@@ -39,6 +39,7 @@ function subthreads() {
       }
     };
   };
+  const graphRedrawn = true
 };
 
 function numbersGraph(posts) {
@@ -79,6 +80,7 @@ function contentExtract() {
   threadElement.innerHTML = '';
   imageContent.map( img => threadElement.append(img) );
   vids.map( vid => threadElement.append(vid) );
+  const graphRedrawn = true
 };
 
 

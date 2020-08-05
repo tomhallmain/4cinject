@@ -20,7 +20,7 @@ function openAll(thumbImgs, play) {
     var thumb = thumbImgs[i].parentElement;
     setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
     if ( /.webm$/.test(thumb.href) ) {
-      if (!play) thumb.nextSibling.pause();
+      if (! play === true) thumb.nextSibling.pause();
     };
   };
   console.log('Opened ' + thumbImgs.length + ' file thumbs');
@@ -44,7 +44,6 @@ function expandImages(thumbImgs) {
 function closeVideo(video) {
   if (video.tagName === "VIDEO") {
     closedWebmThumbs.push(getThumb(video));
-    //arrayRemove(openedWebms, video);
     getCloseLink(video).click();
   };
 };
@@ -52,6 +51,28 @@ function closeVideo(video) {
 function openVideo(videoThumb) {
   closedWebmThumbs = arrayRemove(closedWebmThumbs, videoThumb);
   openAll(getThumbImgs([videoThumb]), true);
+};
+
+function openNextVideo(currentVideo) {
+  const webmThumbImgs = getThumbImgs(null, true)
+    .filter( img => /.webm$/.test(img.parentElement.href) );
+  const currentThumbImg = getThumbImg(getThumb(currentVideo));
+  var currentIndex = (currentVideo ? webmThumbImgs.indexOf(currentThumbImg) : -1);
+  currentIndex++
+  const nextThumbImg = webmThumbImgs[currentIndex] 
+  openAll([nextThumbImg], true);
+  getPostFromElement(nextThumbImg).scrollIntoView();
+};
+
+function openPreviousVideo(currentVideo) {
+  const webmThumbImgs = getThumbImgs(null, true)
+    .filter( img => /.webm$/.test(img.parentElement.href) );
+  const currentThumbImg = getThumbImg(getThumb(currentVideo));
+  var currentIndex = (currentVideo ? webmThumbImgs.indexOf(currentThumbImg) : 1);
+  currentIndex--
+  const previousThumbImg = webmThumbImgs[currentIndex] 
+  openAll([previousThumbImg], true);
+  getPostFromElement(previousThumbImg).scrollIntoView();
 };
 
 function mute(video) {
