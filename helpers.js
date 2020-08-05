@@ -53,5 +53,13 @@ var lockF = function () {
   };
 };
 
+function arrayRemove(arr, value) { 
+  return arr.filter(function(el) { 
+    return el != value; 
+  });
+};
 
+function last(arr) {
+  return arr[arr.length - 1];
+};
 

@@ -1,8 +1,6 @@
-
-
 // Interaction
 
-function open(thumbImgs) {
+function openImgs(thumbImgs) {
   thumbImgs = thumbImgs || getThumbImgs();
   thumbImgs = thumbImgs.filter( img => ! /.webm$/.test(img.parentElement.href) );
   for (var i = 0; i < thumbImgs.length; i++) {
@@ -15,13 +13,14 @@ function open(thumbImgs) {
     console.log('Could not find any image thumbs to expand');
   };
 };
-function openAll(thumbImgs) {
+
+function openAll(thumbImgs, play) {
   thumbImgs = thumbImgs || getThumbImgs();
   for (var i = 0; i < thumbImgs.length; i++) {
     var thumb = thumbImgs[i].parentElement;
     setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
     if ( /.webm$/.test(thumb.href) ) {
-      thumb.nextSibling.pause();
+      if (!play) thumb.nextSibling.pause();
     };
   };
   console.log('Opened ' + thumbImgs.length + ' file thumbs');
@@ -39,7 +38,20 @@ function close(imgsExp) {
 
 function expandImages(thumbImgs) {
   thumbImgs = thumbImgs || getThumbImgs();
-  thumbImgs.length > 0 ? open(thumbImgs) : true;
+  thumbImgs.length > 0 ? openImgs(thumbImgs) : true;
+};
+
+function closeVideo(video) {
+  if (video.tagName === "VIDEO") {
+    closedWebmThumbs.push(getThumb(video));
+    //arrayRemove(openedWebms, video);
+    getCloseLink(video).click();
+  };
+};
+
+function openVideo(videoThumb) {
+  closedWebmThumbs = arrayRemove(closedWebmThumbs, videoThumb);
+  openAll(getThumbImgs([videoThumb]), true);
 };
 
 function mute(video) {

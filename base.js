@@ -15,6 +15,7 @@ const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
 const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
+var openedWebms = [], closedWebmThumbs = [];
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
@@ -96,6 +97,9 @@ function checkT(thumbs) { return thumbs || getThumbs() };
 function getPosts() {
   return [].slice.call(threadElement.querySelectorAll('.post'));
 };
+function getPostFromElement(el) {
+  return el.closest('.post');
+};
 function getPostId(post) {
   return post.id.slice(1);
 };
@@ -111,9 +115,12 @@ function getOriginalPost() {
 function getThumbs() {
   return [].slice.call(threadElement.querySelectorAll('.fileThumb'));
 };
+function getThumb(video) {
+  return video.previousSibling;
+};
 function getThumbImgs(thumbs) {
   thumbs = checkT(thumbs);
-  return getThumbs().reduce( (imgs, thumb) => 
+  return thumbs.reduce( (imgs, thumb) => 
     (thumb.style.display === '' && thumb.querySelector('img')
     && imgs.push(thumb.querySelector('img')), imgs), [] );
 };
@@ -123,8 +130,9 @@ function getExpandedImgs(thumbs) {
       var img = thumb.querySelector('.expanded-thumb');
       if (img) { acc.push(img) }; return acc }, []);
 };
-function getVids() {
-  return [].slice.call(threadElement.querySelectorAll('video'));
+function getVids(el) {
+  el = el || threadElement
+  return [].slice.call(el.querySelectorAll('video'));
 };
 function getExpandedWebms(thumbs) {
   thumbs = checkT(thumbs);
@@ -133,7 +141,12 @@ function getExpandedWebms(thumbs) {
       (thumb.style.display === 'none' && webms.push(thumb.nextSibling), webms), [] );
 };
 function getCloseLinks() {
-  return [].slice.call(threadElement.querySelectorAll('a')).filter( a => a.textContent === 'Close' );
+  return [].slice.call(threadElement.querySelectorAll('a'))
+           .filter( a => a.textContent === 'Close' );
+};
+function getCloseLink(video) {
+  return [].slice.call(video.parentElement.querySelectorAll('a'))
+           .filter( link => link.textContent == "Close" )[0];
 };
 function getQuoteLinks(post) {
   return [].slice.call(getPostMessage(post)?.querySelectorAll('.quotelink'))
@@ -185,11 +198,38 @@ observeDOM( document.body, function(m) {
       var video = added;
       unmute(video)
       video.volume = getVolume();
+      openedWebms.push(video);
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     };
+
+    var removed = record.removedNodes[0];
+    if (removed?.className == 'expandedWebm') {
+      var video = removed;
+      openedWebms = arrayRemove(openedWebms, video);
+    };
   });
 });
+
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+
+  switch (event.key) {
+    case "ArrowLeft":
+      closeVideo(last(openedWebms));
+      break;
+    case "ArrowRight":
+      openVideo(last(closedWebmThumbs));
+      break;
+    default:
+      return; // Quit when this doesn't handle the key event.
+  }
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
 
 
 //////////////////////

@@ -18,7 +18,7 @@ function messageIn(message) {
   var filterSettings = message['filterSettings'];
   event = (function(action, filterSettings) {
     switch (action) {
-      case 'expand': return 'open()'; break;
+      case 'expand': return 'openImgs()'; break;
       case 'close': return 'close()'; break;
       case 'digits': return 'console.log(numbersGraph())'; break;
       case 'maxDigits': return 'console.log(maxDigits())'; break;
