@@ -59,7 +59,14 @@ function arrayRemove(arr, value) {
   });
 };
 
+function first(arr) {
+  return arr[0];
+};
+
 function last(arr) {
   return arr[arr.length - 1];
 };
+
+var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
+var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
 

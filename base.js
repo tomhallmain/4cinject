@@ -122,11 +122,27 @@ function getPostId(post) {
 function getPostMessage(post) {
   return post.querySelector('.postMessage');
 };
+function postContent(post) {
+  const postThumbs = getThumbs(post);
+  const img = first(getExpandedImgs(postThumbs));
+  if (img) return {type: 'img', content: img};
+
+  const thumbImgs = getThumbImgs(postThumbs);
+  const isWebm = webmThumbImg(first(thumbImgs));
+  if (isWebm) return {type: 'webm', content: thumbImgs}; 
+};
 function getPostById(id) {
   return threadElement.querySelector('#p' + id);
 };
 function getOriginalPost() {
   return threadElement.querySelector('.post.op');
+};
+function getPostInSeries(series, index) {
+  if (series == 'thumbs' || series === undefined) {
+    const thumbs = getThumbs();
+    index = index || currentContent;
+    return getPostFromElement(thumbs[index])
+  };
 };
 function getThumbs(el) {
   el = el || threadElement;
@@ -137,6 +153,9 @@ function getThumb(video) {
 };
 function getThumbImg(thumb) {
   return thumb.querySelector('img');
+};
+function webmThumbImg(thumbImg) {
+  return /.webm$/.test(thumbImg.parentElement.href);
 };
 function getThumbImgs(thumbs, includeHidden) {
   thumbs = checkT(thumbs);
@@ -250,7 +269,7 @@ window.addEventListener("keydown", function (event) {
         if (gifsPage) {
           closeVideo(currentVideo);
         } else {
-          return // Reserved
+          exitFullscreen();
         };
       } else {
         if (gifsPage) {
@@ -264,7 +283,12 @@ window.addEventListener("keydown", function (event) {
     case "ArrowRight":
       var currentVideo = last(openedWebms);
       if (shiftPressed) {
-        currentVideo.requestFullscreen();
+        if (gifsPage) {
+          currentVideo.requestFullscreen();
+        } else {
+          postContent(getPostInSeries()).content.requestFullscreen();
+        }
+        fullScreenRequests++
       } else {
         if (gifsPage) {
           openNextVideo(currentVideo);
