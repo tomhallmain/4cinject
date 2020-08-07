@@ -75,6 +75,24 @@ function openPreviousVideo(currentVideo) {
   getPostFromElement(previousThumbImg).scrollIntoView();
 };
 
+function nextContent(thumbs) {
+  thumbs = checkT(thumbs);
+  if (thumbs && (currentContent + 1) <= thumbs.length) {
+    currentContent++
+    const next = getPostFromElement(thumbs[currentContent]);
+    next.scrollIntoView();
+  };
+};
+
+function previousContent(thumbs) {
+  thumbs = checkT(thumbs);
+  if (thumbs && (currentContent - 1) >= 0) {
+    currentContent--
+    const previous = getPostFromElement(thumbs[currentContent]);
+    previous.scrollIntoView();
+  };
+};
+
 function mute(video) {
   video.muted = true;
 };

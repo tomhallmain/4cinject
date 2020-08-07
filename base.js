@@ -16,6 +16,7 @@ const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = [];
+var currentContent = -1;
 var shiftPressed = false;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
@@ -244,18 +245,34 @@ window.addEventListener("keydown", function (event) {
       shiftPressed = true
       break;
     case "ArrowLeft":
+      var currentVideo = last(openedWebms);
       if (shiftPressed) {
-        closeVideo(last(openedWebms));
+        if (gifsPage) {
+          closeVideo(currentVideo);
+        } else {
+          return // Reserved
+        };
       } else {
-        var currentVideo = last(openedWebms);
-        openPreviousVideo(currentVideo);
-        if (currentVideo) closeVideo(currentVideo);
+        if (gifsPage) {
+          openPreviousVideo(currentVideo);
+          if (currentVideo) closeVideo(currentVideo);
+        } else {
+          previousContent();
+        };
       };
       break;
     case "ArrowRight":
       var currentVideo = last(openedWebms);
-      openNextVideo(currentVideo);
-      if (currentVideo) closeVideo(currentVideo);
+      if (shiftPressed) {
+        currentVideo.requestFullscreen();
+      } else {
+        if (gifsPage) {
+          openNextVideo(currentVideo);
+          if (currentVideo) closeVideo(currentVideo);
+        } else {
+          nextContent()
+        }
+      }
       break;
     default:
       return; // Quit when this doesn't handle the key event.
