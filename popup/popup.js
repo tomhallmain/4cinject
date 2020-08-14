@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.threadGraph'),    'threadGraph'     );
   mapBtn( select('.subthreads'),     'subthreads'      );
   mapBtn( select('.contentExtract'), 'contentExtract'  );
+  mapBtn( select('.fullScreen'),     'fullScreen'      );
   mapSlider( select('#volume'),      'setVolume'       );
 });
 

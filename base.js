@@ -15,8 +15,8 @@ const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
 const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
-var openedWebms = [], closedWebmThumbs = [];
-var currentContent = -1;
+var openedWebms = [], closedWebmThumbs = []; fullScreen = true
+var currentContent = -1, fullScreenRequests = 0;
 var shiftPressed = false;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
@@ -34,6 +34,22 @@ function setOrderBy(order) {
   };
 };
 
+function toggleFullscreen(toVal) {
+  if (toVal === null || toVal === undefined) {
+    window.localStorage['fullscreen'] = !fullscreen()
+  } else {
+    window.localStorage['fullscreen'] = toVal
+  };
+};
+
+function fullscreen() {
+  return window.localStorage['fullscreen'] === "true";
+};
+
+if (fullscreen() === undefined) {
+  toggleFullscreen(true);
+};
+
 function setVolume(volume) {
   window.localStorage['volume'] = volume
   getAudioWebms().forEach( webm => webm.volume = volume );
@@ -48,8 +64,13 @@ if (!getVolume()) { // Set initial volume to 50%
 };
 
 if (boardBasePage || catalogPage) {
-  setOrderBy('date')
+  setOrderBy('r')
   if (boardBasePage) { window.location.replace(initialLink + 'catalog') };
+};
+
+if (catalogPage) {
+  const threads = getThreads().filter( t => contentThread(t) );
+  threads.map( t => t.style.backgroundColor = 'green' );
 };
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
@@ -96,6 +117,9 @@ var maxDigits = function() { };
 function checkP(posts) { return posts || getPosts() };
 function checkT(thumbs) { return thumbs || getThumbs() };
 
+function getThreads() {
+  return [].slice.call(document.querySelectorAll('.thread'));
+};
 function getPosts() {
   return [].slice.call(threadElement.querySelectorAll('.post'));
 };
@@ -209,7 +233,16 @@ function hasAudio(videoElement) {
 function getAudioWebms() {
   return getExpandedWebms().filter( webm => hasAudio(webm) );
 };
-
+function threadMeta(thread) { 
+  const data = [].slice.call(thread.querySelector('.meta').querySelectorAll('b'))
+    .map(b => parseInt(b.textContent)); 
+  return {replies: data[0], imgs: data[1]}
+};
+function contentThread(thread) {
+  const meta = threadMeta(thread);
+  const gay = /( [Gg]ay | [Dd]oll | [Gg]lue | [Tt]rann| [Cc]ock| [Dd]ick| [Bb]oys |hemale|[ \/][Ff]ur|[Ll]oli| [Ss]hota)/.test(thread.textContent)
+  return meta.replies > 9 && (meta.imgs >= 40 || (meta.imgs / meta.replies) > 0.5) && !gay
+};
 
 
 var observeDOM = (function(){

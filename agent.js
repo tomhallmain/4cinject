@@ -84,20 +84,22 @@ function nextContent(thumbs) {
     var nextContent = content
     if (type == 'webm') {
       if (empty(getVids(next))) {
-        openAll(nextContent, true);
+        openAll(nextContent, true); // TODO: Open first not all
       };
       nextContent = getVids(next);
     };
-    if ((type == 'img' && nextContent.height > vh + 50) 
-        || (type == 'webm' && nextContent.videoHeight > vh + 50)) {
-      nextContent.requestFullscreen();
-      fullScreenRequests++
-    } else {
-      exitFullscreen();
+    if (fullscreen()) {
+      if ((type == 'img' && nextContent.height > vh + 50) 
+          || (type == 'webm' && nextContent.videoHeight > vh + 50)) {
+        nextContent.requestFullscreen();
+        fullScreenRequests++
+      } else {
+        exitFullscreen();
+      };
     };
     next.scrollIntoView();
   } else {
-    exitFullscreen();
+    if (fullscreen()) exitFullscreen();
   };
 };
 
@@ -114,16 +116,18 @@ function previousContent(thumbs) {
       };
       prevContent = getVids(previous);
     };
-    if ((type == 'img' && prevContent.height > vh + 50) 
-        || (type == 'webm' && prevContent.videoHeight > vh + 50)) {
-      prevContent.requestFullscreen();
-      fullScreenRequests++
-    } else {
-      exitFullscreen();
+    if (fullscreen()) {
+      if ((type == 'img' && prevContent.height > vh + 50) 
+          || (type == 'webm' && prevContent.videoHeight > vh + 50)) {
+        prevContent.requestFullscreen();
+        fullScreenRequests++
+      } else {
+        exitFullscreen();
+      };
     };
     previous.scrollIntoView();
   } else {
-    exitFullscreen();
+    if (fullscreen()) exitFullscreen();
   };
 };
 
@@ -136,11 +140,9 @@ function unmute(video) {
 };
 
 function exitFullscreen() {
-  while (fullScreenRequests > 0) {
-    if (document.fullScreenElement) {
-      document.exitFullscreen();
-      fullScreenRequests--
-    };
+  document.exitFullscreen();
+  if (document.fullScreenElement) {
+    exitFullscreen()
   };
 };
 

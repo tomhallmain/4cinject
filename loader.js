@@ -25,6 +25,7 @@ function messageIn(message) {
       case 'threadGraph': return 'threadGraph()'; break;
       case 'subthreads': return 'subthreads()'; break;
       case 'contentExtract': return 'contentExtract()'; break;
+      case 'fullScreen': return 'toggleFullscreen()'; break;
       case 'setVolume': 
         return 'setVolume(' + filterSettings['volume']/100 + ')';
         break;
