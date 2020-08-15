@@ -69,8 +69,16 @@ if (boardBasePage || catalogPage) {
 };
 
 if (catalogPage) {
-  const threads = getThreads().filter( t => contentThread(t) );
-  threads.map( t => t.style.backgroundColor = 'green' );
+  const threads = getThreads();
+  threads.map( t => {
+    if (gay(t)) {
+      t.remove();
+    } else if (challengeThread(t)) {
+      t.style.backgroundColor = 'teal';
+    } else if (contentThread(t)) {
+      t.style.backgroundColor = 'green';
+    };
+  });
 };
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
@@ -240,8 +248,21 @@ function threadMeta(thread) {
 };
 function contentThread(thread) {
   const meta = threadMeta(thread);
-  const gay = /( [Gg]ay | [Dd]oll | [Gg]lue | [Tt]rann| [Cc]ock| [Dd]ick| [Bb]oys |hemale|[ \/][Ff]ur|[Ll]oli| [Ss]hota)/.test(thread.textContent)
-  return meta.replies > 9 && (meta.imgs >= 40 || (meta.imgs / meta.replies) > 0.5) && !gay
+  return meta.imgs > 9 && (meta.imgs >= 50 || (meta.imgs / meta.replies) > 0.6)
+};
+function gay(thread) {
+  const gay = /( ?[Gg]ay| ?[Dd]oll | ?[Gg]lue| ?[Tt]rann| ?[Cc]ock| ?[Dd]ick| ?[Bb]o[iy][ \/s]|hemale|"male"|[ \/]?[Ff]ur|[Ll]oli| ?[Ss]hota | ?[Ww]aifu| ?[Jj][Aa][Vv] ?|[Ss]issy)/
+  return gay.test(thread.textContent)
+}
+function challengeThread(thread) {
+  const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
+  return ylylMatch.test(thread.textContent)
+}
+function deleteGay(threads) {
+  if (!threads) threads = getThreads();
+  threads.forEach( t => { 
+    if (gay(t)) t.remove();
+  });
 };
 
 
@@ -338,6 +359,8 @@ window.addEventListener("keydown", function (event) {
   // Cancel the default action to avoid it being handled twice
   event.preventDefault();
 }, true);
+
+// to remove and refactor as property //
 
 window.addEventListener("keyup", function (event) {
   if (event.defaultPrevented) {
