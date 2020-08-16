@@ -79,27 +79,32 @@ function nextContent(thumbs) {
   thumbs = checkT(thumbs);
   if (thumbs && (currentContent + 1) < thumbs.length) {
     currentContent++
-    const next = getPostFromElement(thumbs[currentContent]);
-    const {type, content} = postContent(next);
+    const thumb = thumbs[currentContent];
+    const next = getPostFromElement(thumb);
+    const {type, content, expanded} = postContent(next);
+    const webm = type == 'webm'
     var nextContent = content
-    if (type == 'webm') {
-      if (empty(getVids(next))) {
-        openAll(nextContent, true); // TODO: Open first not all
+    if (!expanded) {
+      if (webm) {
+        openVideo(thumb, true);
+        nextContent = getVids(next, true);
+      } else { // type == 'img'
+        ImageExpansion.toggle(content);
+        nextContent = first(getExpandedImgs([thumb]));
       };
-      nextContent = getVids(next);
     };
     if (settingOn('fullscreen')) {
-      if ((type == 'img' && nextContent.height > vh + 50) 
-          || (type == 'webm' && nextContent.videoHeight > vh + 50)) {
+      if ((!webm && nextContent.height > vh + 50) 
+          || (webm && nextContent.videoHeight > vh + 50)) {
         nextContent.requestFullscreen();
-        fullScreenRequests++
-      } else {
+        //fullScreenRequests++
+      } else if (fullscreen()) {
         exitFullscreen();
       };
     };
     next.scrollIntoView();
   } else {
-    if (settingOn('fullscreen')) exitFullscreen();
+    if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
   };
 };
 
@@ -107,27 +112,32 @@ function previousContent(thumbs) {
   thumbs = checkT(thumbs);
   if (thumbs && (currentContent - 1) >= 0) {
     currentContent--
-    const previous = getPostFromElement(thumbs[currentContent]);
-    const {type, content} = postContent(previous);
+    const thumb = thumbs[currentContent];
+    const previous = getPostFromElement(thumb);
+    const {type, content, expanded} = postContent(previous);
+    const webm = type == 'webm'
     var prevContent = content
-    if (type == 'webm') {
-      if (empty(getVids(previous))) {
-        openAll(prevContent, true);
+    if (!expanded) {
+      if (webm) {
+        openVideo(thumb, true);
+        prevContent = getVids(next, true);
+      } else { // type == 'img'
+        ImageExpansion.toggle(content);
+        prevContent = first(getExpandedImgs([thumb]));
       };
-      prevContent = getVids(previous);
     };
     if (settingOn('fullscreen')) {
-      if ((type == 'img' && prevContent.height > vh + 50) 
-          || (type == 'webm' && prevContent.videoHeight > vh + 50)) {
+      if ((!webm && prevContent.height > vh + 50) 
+          || (webm && prevContent.videoHeight > vh + 50)) {
         prevContent.requestFullscreen();
-        fullScreenRequests++
-      } else {
+        //fullScreenRequests++
+      } else if (fullscreen()) {
         exitFullscreen();
       };
     };
     previous.scrollIntoView();
   } else {
-    if (settingOn('fullscreen')) exitFullscreen();
+    if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
   };
 };
 
@@ -140,8 +150,9 @@ function unmute(video) {
 };
 
 function exitFullscreen() {
-  document.exitFullscreen();
-  if (document.fullScreenElement) {
+  try { document.exitFullscreen() }
+  catch (e) { }; // suppress error
+  if (document.fullScreenElement && fullscreen()) {
     exitFullscreen()
   };
 };

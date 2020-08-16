@@ -16,7 +16,7 @@ const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = []; fullScreen = true
-var currentContent = -1, fullScreenRequests = 0;
+var currentContent = -1; //, fullScreenRequests = 0;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
@@ -39,8 +39,8 @@ function settingOn(storageKey, checkVal) {
 function setOrderBy(order) {
   orderSetting = '"orderby":"' + order + '"';
   catalogSettings = local('catalog-settings');
-  catalogSet = setting != undefined
-  orderSet = catalogSet && catalogSetting.includes(orderSetting);
+  catalogSet = catalogSettings != undefined
+  orderSet = catalogSet && catalogSettings.includes(orderSetting);
   if (!orderSet) {
     catalogSettings = '{"extended":true,"large":false,' + orderSetting +'}';
     local('catalog-settings', catalogSettings);
@@ -50,6 +50,9 @@ function setOrderBy(order) {
 function toggleFullscreen() {
   local('fullscreen', !settingOn('fullscreen'));
 };
+function fullscreen() {
+  return document.fullscreen;
+}
 function setVolume(volume) {
   local('volume', volume);
   getAudioWebms().forEach( webm => webm.volume = volume );
@@ -137,9 +140,9 @@ if (!gifsPage && threadPage) {
 };
 
 // Defined temporarily to be overwritten
-var expandImages = function() { };
-var maxDigits = function() { };
-var subthreads = function() { };
+if (!expandImages) var expandImages = function() { };
+if (!maxDigits) var maxDigits = function() { };
+if (!subthreads) var subthreads = function() { };
 
 // General
 
@@ -176,13 +179,13 @@ function getPostMessage(post) {
   return post.querySelector('.postMessage');
 };
 function postContent(post) {
-  const postThumbs = getThumbs(post);
-  const img = first(getExpandedImgs(postThumbs));
-  if (img) return {type: 'img', content: img};
-
-  const thumbImgs = getThumbImgs(postThumbs);
-  const isWebm = webmThumbImg(first(thumbImgs));
-  if (isWebm) return {type: 'webm', content: thumbImgs}; 
+  const thumb = first(getThumbs(post));
+  const expanded = thumbHidden(thumb);
+  const thumbImg = getThumbImg(thumb);
+  const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
+  const content = (expanded && type == 'img' ? first(getExpandedImgs([thumb]))
+    : expanded ? getVids(post, true) : thumbImg);
+  return {type: type, content: content, expanded: expanded};
 };
 function getPostById(id) {
   return threadElement.querySelector('#p' + id);
@@ -207,18 +210,24 @@ function getThumb(video) {
 function getThumbImg(thumb) {
   return thumb.querySelector('img');
 };
+function thumbHidden(thumb) {
+  if (thumb && thumb.style.display === 'none') {
+    return true;
+  } else { 
+    return getThumbImg(thumb)?.style.display === 'none';
+  }
+};
 function webmThumbImg(thumbImg) {
   return /.webm$/.test(thumbImg.parentElement.href);
 };
 function getThumbImgs(thumbs, includeHidden) {
   thumbs = checkT(thumbs);
   if (includeHidden) {
-    return thumbs.reduce( (imgs, thumb) => (thumb.querySelector('img')
-      && imgs.push(thumb.querySelector('img')), imgs), [] );
-  } else {
     return thumbs.reduce( (imgs, thumb) => 
-      (thumb.style.display === '' && thumb.querySelector('img')
-      && imgs.push(thumb.querySelector('img')), imgs), [] );
+     (getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
+  } else {
+    return thumbs.reduce( (imgs, thumb) => (thumb.style.display === ''
+      && getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
   };
 };
 function getExpandedImgs(thumbs) {
@@ -227,8 +236,9 @@ function getExpandedImgs(thumbs) {
       var img = thumb.querySelector('.expanded-thumb');
       if (img) { acc.push(img) }; return acc }, []);
 };
-function getVids(el) {
+function getVids(el, first) {
   el = el || threadElement
+  if (first) return el.querySelector('video');
   return [].slice.call(el.querySelectorAll('video'));
 };
 function getExpandedWebms(thumbs) {
@@ -279,12 +289,6 @@ function challengeThread(thread) {
   const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
   return ylylMatch.test(thread.textContent)
 }
-function deleteGay(threads) {
-  if (!threads) threads = getThreads();
-  threads.forEach( t => { 
-    if (gay(t)) t.remove();
-  });
-};
 
 
 var observeDOM = (function(){
@@ -360,7 +364,7 @@ window.addEventListener("keydown", function (event) {
         } else {
           postContent(getPostInSeries()).content.requestFullscreen();
         }
-        fullScreenRequests++
+        //fullScreenRequests++
       } else {
         if (gifsPage) {
           openNextVideo(currentVideo);
