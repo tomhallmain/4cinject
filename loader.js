@@ -18,14 +18,15 @@ function messageIn(message) {
   var filterSettings = message['filterSettings'];
   event = (function(action, filterSettings) {
     switch (action) {
-      case 'expand': return 'openImgs()'; break;
-      case 'close': return 'close()'; break;
-      case 'digits': return 'console.log(numbersGraph())'; break;
-      case 'maxDigits': return 'console.log(maxDigits())'; break;
-      case 'threadGraph': return 'threadGraph()'; break;
-      case 'subthreads': return 'subthreads()'; break;
+      case 'expand':         return 'openImgs()'; break;
+      case 'close':          return 'close()'; break;
+      case 'digits':         return 'console.log(numbersGraph())'; break;
+      case 'maxDigits':      return 'console.log(maxDigits())'; break;
+      case 'threadGraph':    return 'threadGraph()'; break;
+      case 'subthreads':     return 'toggleSubthreads()'; break;
       case 'contentExtract': return 'contentExtract()'; break;
-      case 'fullScreen': return 'toggleFullscreen()'; break;
+      case 'fullScreen':     return 'toggleFullscreen()'; break;
+      case 'catalogFilter':  return 'toggleFilter()'; break;
       case 'setVolume': 
         return 'setVolume(' + filterSettings['volume']/100 + ')';
         break;

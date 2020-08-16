@@ -88,7 +88,7 @@ function nextContent(thumbs) {
       };
       nextContent = getVids(next);
     };
-    if (fullscreen()) {
+    if (settingOn('fullscreen')) {
       if ((type == 'img' && nextContent.height > vh + 50) 
           || (type == 'webm' && nextContent.videoHeight > vh + 50)) {
         nextContent.requestFullscreen();
@@ -99,7 +99,7 @@ function nextContent(thumbs) {
     };
     next.scrollIntoView();
   } else {
-    if (fullscreen()) exitFullscreen();
+    if (settingOn('fullscreen')) exitFullscreen();
   };
 };
 
@@ -116,7 +116,7 @@ function previousContent(thumbs) {
       };
       prevContent = getVids(previous);
     };
-    if (fullscreen()) {
+    if (settingOn('fullscreen')) {
       if ((type == 'img' && prevContent.height > vh + 50) 
           || (type == 'webm' && prevContent.videoHeight > vh + 50)) {
         prevContent.requestFullscreen();
@@ -127,7 +127,7 @@ function previousContent(thumbs) {
     };
     previous.scrollIntoView();
   } else {
-    if (fullscreen()) exitFullscreen();
+    if (settingOn('fullscreen')) exitFullscreen();
   };
 };
 

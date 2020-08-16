@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.subthreads'),     'subthreads'      );
   mapBtn( select('.contentExtract'), 'contentExtract'  );
   mapBtn( select('.fullScreen'),     'fullScreen'      );
+  mapBtn( select('.catalogFilter'),  'catalogFilter'   );
   mapSlider( select('#volume'),      'setVolume'       );
 });
 

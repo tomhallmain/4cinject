@@ -17,49 +17,68 @@ const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = []; fullScreen = true
 var currentContent = -1, fullScreenRequests = 0;
-var shiftPressed = false;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
 var threadPage = threadMatch.test(initialLink);
 
+function local(storageKey, toVal) {
+  if (toVal) {
+    window.localStorage[storageKey] = toVal
+  } else {
+    return window.localStorage[storageKey];
+  }
+};
+function settingOn(storageKey, checkVal) {
+  if (checkVal) {
+    return local(storageKey) === checkVal;
+  } else {
+    return local(storageKey) === "true";
+  }
+};
 function setOrderBy(order) {
   orderSetting = '"orderby":"' + order + '"';
-  catalogSet = window.localStorage['catalog-settings'] != undefined
-  orderSet = catalogSet && window.localStorage['catalog-settings'].includes(orderSetting);
+  catalogSettings = local('catalog-settings');
+  catalogSet = setting != undefined
+  orderSet = catalogSet && catalogSetting.includes(orderSetting);
   if (!orderSet) {
-    catalogSetting = '{"extended":true,"large":false,' + orderSetting +'}';
-    window.localStorage['catalog-settings'] = catalogSetting;
+    catalogSettings = '{"extended":true,"large":false,' + orderSetting +'}';
+    local('catalog-settings', catalogSettings);
     if (catalogPage) {  window.location.reload() };
   };
 };
-
-function toggleFullscreen(toVal) {
-  if (toVal === null || toVal === undefined) {
-    window.localStorage['fullscreen'] = !fullscreen()
+function toggleFullscreen() {
+  local('fullscreen', !settingOn('fullscreen'));
+};
+function setVolume(volume) {
+  local('volume', volume);
+  getAudioWebms().forEach( webm => webm.volume = volume );
+};
+function toggleSubthreads() {
+  const stOn = settingOn('subthreads');
+  local('subthreads', !stOn);
+  if (!threadPage) return;
+  if (!stOn) {
+    subthreads();
   } else {
-    window.localStorage['fullscreen'] = toVal
+    window.location.reload();
+  };
+};
+function toggleFilter() {
+  const cfOn = settingOn('catalogFilter');
+  local('catalogFilter', !cfOn);
+  if (!catalogPage) return;
+  if (!cfOn) {
+    catalogFilter();
+  } else {
+    window.location.reload();
   };
 };
 
-function fullscreen() {
-  return window.localStorage['fullscreen'] === "true";
-};
-
-if (fullscreen() === undefined) {
-  toggleFullscreen(true);
-};
-
-function setVolume(volume) {
-  window.localStorage['volume'] = volume
-  getAudioWebms().forEach( webm => webm.volume = volume );
-};
-
-function getVolume() {
-  return window.localStorage['volume']
-};
-
-if (!getVolume()) { // Set initial volume to 50%
+if (local('fullscreen') === undefined) local('fullscreen', 'true');
+if (local('subthreads') === undefined) local('subthreads', 'false');
+if (local('catalogFilter') === undefined) local('catalogFilter', 'true');
+if (!local('volume')) { // Set initial volume to 50%
   setVolume(0.5);
 };
 
@@ -67,8 +86,10 @@ if (boardBasePage || catalogPage) {
   setOrderBy('r')
   if (boardBasePage) { window.location.replace(initialLink + 'catalog') };
 };
-
 if (catalogPage) {
+  if (settingOn('catalogFilter')) catalogFilter();
+};
+function catalogFilter() {
   const threads = getThreads();
   threads.map( t => {
     if (gay(t)) {
@@ -84,11 +105,13 @@ if (catalogPage) {
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
   .map( el => el.innerHTML = '' )
 
+window.addEventListener('error', function(e) {
+  console.log(e);
+}, true);
 
 function sleepAsync(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 async function loadData(func, callback) {
   //const name = (eval("" funct ""))
   while(typeof func !== "function") {
@@ -97,17 +120,15 @@ async function loadData(func, callback) {
   callback();
 };
 
-window.addEventListener('error', function(e) {
-  console.log(e);
-}, true);
-
 if (threadPage) {
   loadData(maxDigits, function() {
     const digits = maxDigits()
     if (digits) console.log(digits);
   });
+  loadData(subthreads, function() {
+    if (settingOn('subthreads')) subthreads();
+  });
 };
-
 if (!gifsPage && threadPage) {
   loadData(expandImages, function() {
     expandImages();
@@ -118,7 +139,7 @@ if (!gifsPage && threadPage) {
 // Defined temporarily to be overwritten
 var expandImages = function() { };
 var maxDigits = function() { };
-
+var subthreads = function() { };
 
 // General
 
@@ -251,7 +272,7 @@ function contentThread(thread) {
   return meta.imgs > 9 && (meta.imgs >= 50 || (meta.imgs / meta.replies) > 0.6)
 };
 function gay(thread) {
-  const gay = /( ?[Gg]ay| ?[Dd]oll | ?[Gg]lue| ?[Tt]rann| ?[Cc]ock| ?[Dd]ick| ?[Bb]o[iy][ \/s]|hemale|"male"|[ \/]?[Ff]ur|[Ll]oli| ?[Ss]hota | ?[Ww]aifu| ?[Jj][Aa][Vv] ?|[Ss]issy)/
+  const gay = /( ?[Gg]ay| ?[Dd]oll| ?[Gg]lue| ?[Tt]rann| ?[Cc]ock| ?[Dd]ick| ?[Bb]o[iy][ \/s]|hemale|"male"|[ \/]?[Ff]ur|[Ll]oli|(^| )?[Ss]hota( |$)| ?[Ww]aifu| ?[Jj][Aa][Vv] ?|[Ss]issy)/
   return gay.test(thread.textContent)
 }
 function challengeThread(thread) {
@@ -294,7 +315,7 @@ observeDOM( document.body, function(m) {
     if (added?.className == 'expandedWebm') {
       var video = added;
       unmute(video)
-      video.volume = getVolume();
+      video.volume = local('volume');
       openedWebms.push(video);
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
@@ -314,12 +335,9 @@ window.addEventListener("keydown", function (event) {
   };
 
   switch (event.key) {
-    case "Shift":
-      shiftPressed = true
-      break;
     case "ArrowLeft":
       var currentVideo = last(openedWebms);
-      if (shiftPressed) {
+      if (event.shiftKey) {
         if (gifsPage) {
           closeVideo(currentVideo);
         } else {
@@ -336,7 +354,7 @@ window.addEventListener("keydown", function (event) {
       break;
     case "ArrowRight":
       var currentVideo = last(openedWebms);
-      if (shiftPressed) {
+      if (event.shiftKey) {
         if (gifsPage) {
           currentVideo.requestFullscreen();
         } else {
@@ -351,25 +369,6 @@ window.addEventListener("keydown", function (event) {
           nextContent()
         }
       }
-      break;
-    default:
-      return; // Quit when this doesn't handle the key event.
-  };
-
-  // Cancel the default action to avoid it being handled twice
-  event.preventDefault();
-}, true);
-
-// to remove and refactor as property //
-
-window.addEventListener("keyup", function (event) {
-  if (event.defaultPrevented) {
-    return; // Do nothing if the event was already processed
-  }
-
-  switch (event.key) {
-    case "Shift":
-      shiftPressed = false;
       break;
     default:
       return; // Quit when this doesn't handle the key event.
