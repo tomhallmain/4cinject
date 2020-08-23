@@ -94,8 +94,9 @@ function nextContent(thumbs) {
       };
     };
     if (settingOn('fullscreen')) {
-      if ((!webm && nextContent.height > vh + 50) 
-          || (webm && nextContent.videoHeight > vh + 50)) {
+      const v = vh + 50;
+      if ((!webm && nextContent.height > v) 
+        || (webm && nextContent.videoHeight > v)) {
         nextContent.requestFullscreen();
         //fullScreenRequests++
       } else if (fullscreen()) {
@@ -127,8 +128,9 @@ function previousContent(thumbs) {
       };
     };
     if (settingOn('fullscreen')) {
-      if ((!webm && prevContent.height > vh + 50) 
-          || (webm && prevContent.videoHeight > vh + 50)) {
+      const v = vh + 50;
+      if ((!webm && prevContent.height > v) 
+        || (webm && prevContent.videoHeight > v) ) {
         prevContent.requestFullscreen();
         //fullScreenRequests++
       } else if (fullscreen()) {
