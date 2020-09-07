@@ -1,4 +1,6 @@
 
+fireEvent('var n_scripts = 0');
+
 function loadScript(fileName) {
   var s = document.createElement('script');
   s.src = chrome.runtime.getURL(fileName);
