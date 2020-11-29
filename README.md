@@ -2,20 +2,23 @@
 
 Simple extension for interfacing with 4Chan DOM.
 
-# Setup
+## Setup
 - Clone the repo
 - Open chrome://extensions URL on Chrome browser
 - Check option for developer mode
 - Select `Load Unpacked`
 - Select `ext` folder
 
-# Usage
+## Usage
 
-After installation, find the icon popup in the top right corner of the browser. Click it and see the options available.
+After installation, find the icon popup in the top right corner of the browser. The popup lists options available. Detailed options are listed below.
 
-When on a thread page, navigate through threads using the arrow keys: ight moves down the thread, left moves up. When using arrow keys, only posts with content (images, WebMs, etc.) are the target of navigation.
+### Navigation
 
-While subthreads setting is on, ALT + arrow key jumps to next base post, instead of the next post with content.
+- *Left/right arrow* - While on a thread, move to the next/previous post with content (image, WebM, etc.)
+- *ALT + Left/right arrow* - Jump: While subthreads setting is on move to next/previous _base_ post with content
+- *SHIFT + Right arrow* - While post is engaged, set post content to fullscreen
+- *SHIFT + Left arrow* - While post is engaged and content is fullscreen, exit fullscreen
 
 ### Settings
 
@@ -28,7 +31,7 @@ While subthreads setting is on, ALT + arrow key jumps to next base post, instead
 | MaxDigits      | true     | On thread load, show and make links to max digits among thread posts                               |
 | Expand         | true     | On thread load, automatically expand all images, including gifs                                    |
 | Fullscreen     | false    | When engaging content via arrow keys, will set each image/WebM to full screen                      |
-| Close          | n/a      | Close all expanded content - on thread loads this is the site's default state                      |
+| Close          | n/a      | Close all expanded content on threads (return to site's default state for thread content)          |
 | ThreadGraph    | n/a      | Console-based - return the thread graph object                                                     |
 | Digits         | n/a      | Console-based - return the digits object                                                           |
 
