@@ -92,13 +92,13 @@ function engagePost(post, thumb) {
     }
   }
   if (settingOn('fullscreen')) {
-    const v = vh + 50;
-    if ((!webm && engageContent.height > v) 
-      || (webm && engageContent.videoHeight > v)) {
-      engageContent.requestFullscreen();
-    } else if (fullscreen()) {
-      exitFullscreen();
-    }
+    engageContent.requestFullscreen();
+    //const v = vh + 50;
+    //if ((!webm && engageContent.height > v) 
+    //  || (webm && engageContent.videoHeight > v)) {
+    //} else if (fullscreen()) {
+    //  exitFullscreen();
+    //}
   }
   post.scrollIntoView();
 }

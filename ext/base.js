@@ -15,7 +15,7 @@ const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
 const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
-var openedWebms = [], closedWebmThumbs = []; fullScreen = true
+var openedWebms = [], closedWebmThumbs = []; fullScreen = false
 var currentContent = -1; //, fullScreenRequests = 0;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
@@ -23,17 +23,18 @@ var catalogPage = catalogMatch.test(initialLink);
 var threadPage = threadMatch.test(initialLink);
 
 function local(storageKey, toVal) {
-  if (toVal) {
+  if (toVal != null) {
     window.localStorage[storageKey] = toVal
   } else {
     return window.localStorage[storageKey];
   }
 }
 function settingOn(storageKey, checkVal) {
+  const testVal = local(storageKey)
   if (checkVal) {
-    return local(storageKey) === checkVal;
+    return testVal === checkVal;
   } else {
-    return local(storageKey) === "true";
+    return testVal !== "false" && testVal !== undefined && testVal !== null;
   }
 }
 function setOrderBy(order) {
@@ -77,8 +78,12 @@ function toggleFilter() {
     window.location.reload();
   }
 }
-
-if (local('fullscreen') === undefined) local('fullscreen', 'true');
+function setThreadFilter(filterPattern) {
+  local('threadFilter', filterPattern);
+  if (!catalogPage || filterPattern === "") return;
+  window.location.reload();
+}
+if (local('fullscreen') === undefined) local('fullscreen', 'false');
 if (local('subthreads') === undefined) local('subthreads', 'true');
 if (local('catalogFilter') === undefined) local('catalogFilter', 'true');
 if (!local('volume')) { // Set initial volume to 50%
@@ -94,8 +99,13 @@ if (catalogPage) {
 }
 function catalogFilter() {
   const threads = getThreads();
+  const threadFilter = local('threadFilter')
+  var filterPattern;
+  if (threadFilter != undefined && threadFilter !== "") {
+    filterPattern = new RegExp(threadFilter)
+  }
   threads.map( t => {
-    if (gay(t)) {
+    if (filterPattern?.test(t.textContent)) {
       t.remove();
     } else if (challengeThread(t)) {
       t.style.backgroundColor = 'teal';
@@ -242,10 +252,12 @@ function getBacklinks(post) {
       .map( tag => parseInt(tag.hash.slice(2)) );
   } else { return [] }
 }
-function hasAudio(videoElement) {
-  return videoElement.audioTracks.length > 0;
+function hasAudio(video) {
+  return video.mozHasAudio ||
+    Boolean(video.webkitAudioDecodedByteCount) ||
+    Boolean(video.audioTracks && video.audioTracks.length);
 }
-function getAudioWebms() {
+function getAudioWebms(video) {
   return getExpandedWebms().filter( webm => hasAudio(webm) );
 }
 function threadMeta(thread) { 
@@ -256,10 +268,6 @@ function threadMeta(thread) {
 function contentThread(thread) {
   const meta = threadMeta(thread);
   return meta.imgs > 9 && (meta.imgs >= 50 || (meta.imgs / meta.replies) > 0.6)
-}
-function gay(thread) {
-  const gay = /( ?[Gg]ay| ?[Dd]oll| ?[Gg]lue| ?[Tt]rann| ?[Cc]ock| ?[Dd]ick| ?[Bb]o[iy][ \/s]|hemale|"male"|[ \/]?[Ff]ur|[Ll]oli|(^| )?[Ss]hota( |$)| ?[Ww]aifu| ?[Jj][Aa][Vv] ?|[Ss]issy)/
-  return gay.test(thread.textContent)
 }
 function challengeThread(thread) {
   const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
@@ -310,22 +318,20 @@ observeDOM(document.body, function(m) {
 });
 
 window.addEventListener("keydown", function (event) {
-  if (event.defaultPrevented) {
-    return; // Do nothing if the event was already processed
-  }
+  if (event.defaultPrevented) { return }
 
   switch (event.key) {
     case "ArrowLeft":
       var currentVideo = last(openedWebms);
       if (event.shiftKey) {
         if (gifsPage) { closeVideo(currentVideo) }
-        else { exitFullscreen() } }
+        else { exitFullscreen() }}
       else if (event.altKey) { jump(false) }
       else {
         if (gifsPage) {
           openPreviousVideo(currentVideo);
           if (currentVideo) closeVideo(currentVideo);
-        } else { previousContent() } }
+        } else { previousContent() }}
       break;
     case "ArrowRight":
       var currentVideo = last(openedWebms);
@@ -334,13 +340,13 @@ window.addEventListener("keydown", function (event) {
           currentVideo.requestFullscreen();
         } else {
           postContent(getPostInSeries()).content.requestFullscreen();
-        } }
+        }}
       else if (event.altKey) { jump(true) }
       else {
         if (gifsPage) {
           openNextVideo(currentVideo);
           if (currentVideo) closeVideo(currentVideo);
-        } else { nextContent() } }
+        } else { nextContent() }}
       break;
     default:
       return; // Quit when this doesn't handle the key event.

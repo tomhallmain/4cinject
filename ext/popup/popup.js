@@ -1,10 +1,10 @@
 // Setup
 
-var filterSettings = {};
+var filterSettings = {}
 let activeTabParams = {
   active: true,
   currentWindow: true
-};
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.expand'),         'expand'          );
@@ -16,36 +16,60 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.contentExtract'), 'contentExtract'  );
   mapBtn( select('.fullScreen'),     'fullScreen'      );
   mapBtn( select('.catalogFilter'),  'catalogFilter'   );
+  mapInput( select('.threadFilter'), 'setThreadFilter' );
   mapSlider( select('#volume'),      'setVolume'       );
 });
 
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
     console.log(request);
-    if (request.msg === 'volume') {
-      select('#volume').value = request.data * 100
+    switch (request.msg) {
+      case ('volume'):
+        select('#volume').value = request.data * 100
+        break;
+      case ('threadFilter'):
+        if (request.data === undefined) return
+        select('.threadFilter').innerHTML = request.data
+        break;
     }
   }
 );
 
-function select(className) {
-  return document.querySelector(className);
-};
+select('.threadFilter').addEventListener("keydown", function(e) {
+  if (e.keyCode == 13 && !e.shiftKey) {
+    event.target.dispatchEvent(new Event("change", {cancelable: true}));
+    e.preventDefault();
+    return false;
+  }
+});
+
+function select(selector) {
+  return document.querySelector(selector);
+}
 function mapBtn(btn, msg) {
   btn.addEventListener('click', function() { btnPressed(msg) });
-};
+}
+function mapInput(input, msg) {
+  input.addEventListener('change', function() {
+    updateFilter(input.className, input.value);
+    setThreadFilter(msg);
+  });
+}
 function mapSlider(slider, msg) {
   slider.addEventListener('change', function() { 
     updateFilter(slider.id, slider.value)
     setVolume(msg);
   });
-};
+}
 function getVolume() {
   sendMsg({action: 'getVolume'});
-};
+}
+function getThreadFilter() {
+  sendMsg({action: 'getThreadFilter'});
+}
 
 getVolume();
-
+getThreadFilter();
 
 // Message passing
 
@@ -56,12 +80,12 @@ function sendMsg(msg) {
     console.log(msg);
     console.log(tabs[0]);
     chrome.tabs.sendMessage(tabs[0].id, msg);
-  };
-};
+  }
+}
 function applyFilter(msg) {
   msg['filterSettings'] = filterSettings;
   return msg;
-};
+}
 
 
 // Actions
@@ -69,11 +93,14 @@ function applyFilter(msg) {
 function btnPressed(msg) {
   console.log('button pressed for ' + msg);
   sendMsg({action: msg});
-};
+}
 function setVolume(msg) {
   sendMsg({action: msg});
-};
+}
+function setThreadFilter(msg) {
+  sendMsg({action: msg});
+}
 function updateFilter(inputId, input) {
   filterSettings[inputId] = input;
   console.log('changed filter for ' + inputId + ' to ' + input);
-};
+}

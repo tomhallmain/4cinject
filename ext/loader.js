@@ -30,10 +30,17 @@ function messageIn(message) {
       case 'fullScreen':     return 'toggleFullscreen()'; break;
       case 'catalogFilter':  return 'toggleFilter()'; break;
       case 'setVolume': 
-        return 'setVolume(' + filterSettings['volume']/100 + ')';
+        return 'setVolume(' + (filterSettings['volume'] || 50)/100 + ')';
         break;
       case 'getVolume': 
         messageOut('volume', window.localStorage['volume']);
+        break;
+      case 'setThreadFilter':
+        var pattern = filterSettings['threadFilter'].replaceAll('"', '\\"')
+        return 'setThreadFilter("' + pattern + '")';
+        break;
+      case 'getThreadFilter': 
+        messageOut('threadFilter', window.localStorage['threadFilter']);
         break;
       default: console.log('Message not understood');
     };
