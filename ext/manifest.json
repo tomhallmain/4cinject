@@ -4,6 +4,9 @@
   "manifest_version": 2,
   "description": "",
   "homepage_url": "https://4chan.org",
+  "background": {
+    "scripts": ["background.js"]
+  },
   "content_scripts": [{
     "matches": [
       "https://boards.4chan.org/*",
@@ -32,5 +35,11 @@
     "agent.js",
     "reporter.js",
     "popup/popup.js"
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://boards.4chan.org/*",
+      "https://boards.4channel.org/*"
+    ]
+  }
 }

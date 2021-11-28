@@ -1,6 +1,6 @@
 # 4cinject
 
-Simple extension for interfacing with 4Chan DOM.
+Simple extension for interfacing with 4Channel DOM.
 
 ## Setup
 - Clone the repo
@@ -34,4 +34,22 @@ After installation, find the icon popup in the top right corner of the browser. 
 | Close          | n/a      | Close all expanded content on threads (return to site's default state for thread content)          |
 | ThreadGraph    | n/a      | Console-based - return the thread graph object                                                     |
 | Digits         | n/a      | Console-based - return the digits object                                                           |
+
+### Content Analysis
+
+Because much of the content on the site is often recycled, it may be desirable to set a list of files you already have saved to avoid duplicate downloads.
+
+To do this, create a file *ext/sha1s.json* as a JSON array containing the string of the SHA1s of your existing files to be marked as already seen. For example:
+
+```json
+[
+  "ee3283ac79b562d7ddb73b3eb7aae9f35ba6a9c3",
+  "53df56d39c6080abfc8a4ed67ab9cf4843798c99"
+]
+```
+
+Be sure to reload the extension in the browser extensions page after adding this file, and reload any previously loaded pages after.
+
+An SHA1 from each file on any thread will be tested against the list of SHA1s provided 20 seconds after thread load. If a match is found, a red border is applied to the associated post element.
+
 

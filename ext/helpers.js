@@ -73,6 +73,68 @@ function insertAfter(referenceNode, newNode) {
   referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
+function toDataURL(url) {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('get', url);
+    xhr.responseType = 'blob';
+    xhr.onload = function() {
+      if (this.status >= 200 && this.status < 300) {
+        var fr = new FileReader();
+
+        fr.onload = function() {
+          if ((typeof this.result) == "string") {
+            resolve(this.result);
+          }
+          else {
+            reject({
+              status: this.status,
+              statusText: "Invalid type of result: " + String(typeof this.result)
+            });
+          }
+        };
+        
+        fr.readAsDataURL(xhr.response);
+      } else {
+        reject({
+          status: this.status,
+          statusText: xhr.statusText
+        });
+      }
+    };
+    xhr.onerror = function() {
+      reject({
+        status: this.status,
+        statusText: xhr.statusText
+      });
+    };
+
+    xhr.send();
+  });
+}
+
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 20000 } = options;
+  
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  const response = await fetch(resource, {
+    ...options,
+    signal: controller.signal  
+  });
+  clearTimeout(id);
+  return response;
+}
+
+async function getSHA1(url) {
+  let blob = await fetch(url).then(res => res.blob());
+  let arrayBuf = await blob.arrayBuffer();
+  let hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuf);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
 var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
 var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
 

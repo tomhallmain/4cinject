@@ -10,13 +10,15 @@ const threadElement = document.querySelector('.thread');
 const threadId = threadElement?.id
 const quoteLinks = threadElement?.querySelector('.quoteLink');
 
-const gifsMatch = /4chan.org\/gif/;
+const gifsMatch = /4chan(nel)?.org\/(gif|wsg)/;
 const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
 const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = []; fullScreen = false
 var currentContent = -1; //, fullScreenRequests = 0;
+var numContentItems = getThumbs().length;
+var numSeenContentItems = 0;
 var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
@@ -273,6 +275,26 @@ function challengeThread(thread) {
   const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
   return ylylMatch.test(thread.textContent)
 }
+function getDataMD5(expandedItem) {
+  if (expandedItem.className == "expandedWebm") {
+    return getThumb(expandedItem).querySelector("img").getAttribute("data-md5");
+  }
+  else {
+    return expandedItem.previousSibling.getAttribute("data-md5");
+  }
+}
+function getElementByDataMD5(dataMD5) {
+  return document.querySelector('[data-md5="' + dataMD5 + '"]')
+}
+function verifyContentFreshness() {
+  getThumbs().map( thumb => {
+      chrome.runtime.sendMessage(extensionID, {
+        action: 'testSHA1',
+        url: thumb.href,
+        dataId: thumb.querySelector("img").getAttribute('data-md5')
+      })
+    });
+}
 
 
 var observeDOM = (function(){
@@ -305,10 +327,11 @@ observeDOM(document.body, function(m) {
       unmute(video)
       video.volume = local('volume');
       openedWebms.push(video);
+      chrome.runtime.sendMessage(extensionID, {action: 'testSHA1', url: added.src, dataId: getDataMD5(video)});
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     }
-
+    
     var removed = record.removedNodes[0];
     if (removed?.className == 'expandedWebm') {
       var video = removed;
@@ -382,6 +405,10 @@ if (threadPage) {
     loadData(expandImages, function() {
       expandImages();
       // Other boards may have threads that contain videos, but there are usually fewer
+      setTimeout(() => {
+        verifyContentFreshness();
+        setSeenStats();
+      }, 20000);
     });
   }
 }

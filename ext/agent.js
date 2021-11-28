@@ -161,5 +161,28 @@ function exitFullscreen() {
   }
 }
 
+function setIsSeenContent(dataId) {
+  thumb = getElementByDataMD5(dataId);
+
+  if (!thumb) {
+    return;
+  }
+
+  /*
+  if (thumb.nextSibling) {
+    contentClass = thumb.nextSibling.className;
+    if (contentClass == "expanded-thumb") {
+      close([thumb.nextSibling]);
+    }
+    else if (contentClass == "expandedWebm") {
+      closeVideo(thumb.nextSibling);
+    }
+  }
+  */
+
+  const stalePost = getPostFromElement(thumb);
+  stalePost.style.borderColor = 'red';
+}
+
 if (!n_scripts) var n_scripts = 0;
 n_scripts++

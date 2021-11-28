@@ -94,6 +94,26 @@ function reportDigits() {
   insertAfter(nld, digitsReporter);
 }
 
+function setSeenStats() {
+  if (numContentItems == 0) {
+    return;
+  }
+
+  const proportionSeen = numSeenContentItems / numContentItems;
+
+  if (proportionSeen == 0) {
+    return;
+  }
+
+  var seenReporter = document.createElement('div');
+  seenReporter.className = 'seenContent desktop';
+  var seenTitle = document.createElement('h3');
+  seenTitle.textContent('Seen content ratio: ' + proportionSeen);
+  seenReporter.appendChild(seenTitle);
+  const nld = document.querySelector('.navLinks.desktop');
+  insertAfter(nld, seenReporter);
+}
+
 function contentExtract() {
   openAll();
   var imageContent = getExpandedImgs();
