@@ -18,14 +18,19 @@ function openImgs(thumbImgs) {
 
 function openAll(thumbImgs, play) {
   thumbImgs = thumbImgs || getThumbImgs();
+  var opened = 0
   for (var i = 0; i < thumbImgs.length; i++) {
+    if (!thumbImgs[i]) {
+        continue
+    }
     var thumb = thumbImgs[i].parentElement;
     setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
     if ( webmThumbImg(thumb) ) {
       if (! play === true) thumb.nextSibling.pause();
     }
+    opened++
   }
-  if (debug) console.log('Opened ' + thumbImgs.length + ' file thumbs');
+  if (debug) console.log('Opened ' + opened + ' file thumbs');
 }
 
 function close(imgsExp) {
@@ -162,6 +167,7 @@ function exitFullscreen() {
 }
 
 function setIsSeenContent(dataId) {
+  numSeenContentItems++;
   thumb = getElementByDataMD5(dataId);
 
   if (!thumb) {
@@ -182,6 +188,10 @@ function setIsSeenContent(dataId) {
 
   const stalePost = getPostFromElement(thumb);
   stalePost.style.borderColor = 'red';
+  
+  if (gifsPage) {
+    setSeenStats();
+  }
 }
 
 if (!n_scripts) var n_scripts = 0;

@@ -123,6 +123,10 @@ function catalogFilter() {
 
 // GENERAL ////////////
 
+function getBoard() {
+  route = initialLink.replaceAll(/.+4chan(nel)?.org\//g, "")
+  return route.substring(0, route.indexOf("/"))
+}
 function checkP(posts) { return posts || getPosts() }
 function checkT(thumbs) { return thumbs || getThumbs() }
 function getThreads() {
@@ -201,7 +205,7 @@ function getThumbImg(thumb) {
 function thumbHidden(thumb) {
   if (thumb && thumb.style.display === 'none') {
     return true;
-  } else { 
+  } else {
     return getThumbImg(thumb)?.style.display === 'none';
   }
 }
@@ -211,7 +215,7 @@ function webmThumbImg(thumbImg) {
 function getThumbImgs(thumbs, includeHidden) {
   thumbs = checkT(thumbs);
   if (includeHidden) {
-    return thumbs.reduce( (imgs, thumb) => 
+    return thumbs.reduce( (imgs, thumb) =>
      (getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
   } else {
     return thumbs.reduce( (imgs, thumb) => (thumb.style.display === ''
@@ -262,9 +266,9 @@ function hasAudio(video) {
 function getAudioWebms(video) {
   return getExpandedWebms().filter( webm => hasAudio(webm) );
 }
-function threadMeta(thread) { 
+function threadMeta(thread) {
   const data = [].slice.call(thread.querySelector('.meta').querySelectorAll('b'))
-    .map(b => parseInt(b.textContent)); 
+    .map(b => parseInt(b.textContent));
   return {replies: data[0], imgs: data[1]}
 }
 function contentThread(thread) {
@@ -297,6 +301,22 @@ function verifyContentFreshness() {
 }
 
 
+// /pol/ methods
+
+function getPosterId(post) {
+  return post.querySelector("[class='hand']")?.textContent
+}
+function getFlagCode(post) {
+  return post.querySelector("[class*='flag']")?.class.replace("flag flag-", "")
+}
+function getFlag(post) {
+  return post.querySelector("[class*='flag']")?.title
+}
+function getPostsByPosterId(posterId, posts) {
+  return checkP(posts).filter(post => getPosterId(post) == posterId);
+}
+
+
 var observeDOM = (function(){
   var MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
 
@@ -310,7 +330,7 @@ var observeDOM = (function(){
       // have the observer observe foo for changes in children
       obs.observe( obj, { childList:true, subtree:true });
     }
-    
+
     else if( window.addEventListener ){
       obj.addEventListener('DOMNodeInserted', callback, false);
       obj.addEventListener('DOMNodeRemoved', callback, false);
@@ -319,8 +339,8 @@ var observeDOM = (function(){
 })();
 
 
-observeDOM(document.body, function(m) { 
-  m.forEach( record => { 
+observeDOM(document.body, function(m) {
+  m.forEach( record => {
     var added = record.addedNodes[0];
     if (added?.className == 'expandedWebm') {
       var video = added;
@@ -331,7 +351,7 @@ observeDOM(document.body, function(m) {
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     }
-    
+
     var removed = record.removedNodes[0];
     if (removed?.className == 'expandedWebm') {
       var video = removed;
@@ -408,8 +428,12 @@ if (threadPage) {
       setTimeout(() => {
         verifyContentFreshness();
         setSeenStats();
-      }, 20000);
+      }, 10000);
     });
+
+    if (getBoard() == "pol") {
+      loadData(idFlagGraph, function() { reportFlags() });
+    }
   }
 }
 
@@ -417,4 +441,4 @@ if (threadPage) {
 if (!expandImages) var expandImages = function() { }
 if (!maxDigits) var maxDigits = function() { }
 if (!subthreads) var subthreads = function() { }
-
+if (!idFlagGraph) var idFlagGraph = function() { }

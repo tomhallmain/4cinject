@@ -55,9 +55,9 @@ var lockF = function () {
   }
 }
 
-function arrayRemove(arr, value) { 
-  return arr.filter(function(el) { 
-    return el != value; 
+function arrayRemove(arr, value) {
+  return arr.filter(function(el) {
+    return el != value;
   });
 }
 
@@ -93,7 +93,7 @@ function toDataURL(url) {
             });
           }
         };
-        
+
         fr.readAsDataURL(xhr.response);
       } else {
         reject({
@@ -115,12 +115,12 @@ function toDataURL(url) {
 
 async function fetchWithTimeout(resource, options = {}) {
   const { timeout = 20000 } = options;
-  
+
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   const response = await fetch(resource, {
     ...options,
-    signal: controller.signal  
+    signal: controller.signal
   });
   clearTimeout(id);
   return response;
