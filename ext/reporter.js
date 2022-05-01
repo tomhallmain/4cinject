@@ -16,23 +16,28 @@ function threadGraph(posts, includeNoRef) {
 function subthreads() {
   const graph = threadGraph(null, false)
   var postIds = Object.keys(graph)
+  opId = getPostId(getOriginalPost())
   var counts = {}
   for (var postId of postIds) {
+    if (postId == opId) continue;
     var post = getPostById(postId)
     var [pLinks, pBacklinks] = graph[postId]
     for (var blPostId of pBacklinks) {
+      if (blPostId == opId) {
+        continue;
+      }
       var blPost = getPostById(blPostId)
       var count = counts[blPostId]
       if (count) {
         var blPostCopy = blPost.cloneNode()
-        blPostCopy.style.borderColor = 'white'
+        blPostCopy.style.borderColor = 'gray'
         blPostCopy.id = blPostId + "-" + count
         updateIdsNames(blPostCopy.getElementsByTagName("*"), new RegExp(blPostId), count)
         post.appendChild(blPostCopy)
         counts[blPostId]++
       } else {
         var blPostContainer = blPost.parentElement
-        blPost.style.borderColor = 'white'
+        blPost.style.borderColor = 'gray'
         post.appendChild(blPost)
         blPostContainer.remove()
         counts[blPostId] = 1
@@ -169,7 +174,7 @@ function idFlagGraph(posts) {
     posterDetailsSorted[posterId] = details
   }
 
-  return [uniqueFlagsSorted, posterDetailsSorted, flagSwitchers]
+  return [uniqueFlagsSorted, posterDetailsSorted, flagSwitchers, posts.length]
 }
 
 function reportFlags() {
@@ -177,7 +182,15 @@ function reportFlags() {
   var idFlagReporter = document.createElement('div')
   idFlagReporter.className = 'flags desktop'
   var opDetails = document.createElement('h3')
-  opDetails.textContent = 'Posts by OP: ' + getPostsByPosterId(getPosterId(getOriginalPost())).length
+  const nOpPosts = getPostsByPosterId(getPosterId(getOriginalPost())).length
+  const nPosts = idFlags[3]
+  if (nOpPosts < 2 || nOpPosts / nPosts <= 0.01) {
+    opDetails.textContent = 'Posts by OP: ' + nOpPosts + ' (WARNING - LOW)'
+    opDetails.style.color = 'red'
+  }
+  else {
+    opDetails.textContent = 'Posts by OP: ' + nOpPosts
+  }
   idFlagReporter.appendChild(opDetails)
   var header = document.createElement('h3')
   flagPosters = idFlags[0]
