@@ -28,10 +28,13 @@ After installation, find the icon popup in the top right corner of the browser. 
 | Volume         | 50%      | Initial volume level relative to system for all opened WebMs with audio                            |
 | Subthreads     | true     | On thread load, redraw the thread posts into a parent-child form                                   |
 | CatalogFilter  | true     | On catalog load applies ThreadFilter, highlights posts with high content ratio and challenge posts |
+| HighlightNew   | true     | Highight posts created since last thread load                                                      |
 | MaxDigits      | true     | On thread load, show and make links to max digits among thread posts                               |
-| Expand         | true     | On thread load, automatically expand all images, including gifs                                    |
+| TestSHA1s      | false    | Test content SHA1s and highlight post if content is found in saved list                            |
 | Fullscreen     | false    | When engaging content via arrow keys, will set each image/WebM to full screen                      |
-| Close          | n/a      | Close all expanded content on threads (return to site's default state for thread content)          |
+| Auto Expand    | false    | On thread load, automatically expand all images, including gifs                                    |
+| Expand         | n/a      | Expand all images on threads on click                                                              |
+| Close          | n/a      | Close all expanded images on threads (return to site's default state for thread content) on click  |
 | ThreadGraph    | n/a      | Console-based - return the thread graph object                                                     |
 | Digits         | n/a      | Console-based - return the digits object                                                           |
 
@@ -50,6 +53,6 @@ To do this, create a file *ext/sha1s.json* as a JSON array containing the string
 
 Be sure to reload the extension in the browser extensions page after adding this file, and reload any previously loaded pages after.
 
-An SHA1 from each file on any thread will be tested against the list of SHA1s provided 20 seconds after thread load. If a match is found, a red border is applied to the associated post element.
+If setting TestSHA1s is turned on, SHA1s from each file on any thread will be tested against the list of SHA1s provided upon thread load. If a match is found, a red border is applied to the associated post.
 
 

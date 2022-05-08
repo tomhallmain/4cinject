@@ -23,6 +23,7 @@ var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
 var threadPage = threadMatch.test(initialLink);
+var postIds = [];
 
 function local(storageKey, toVal) {
   if (toVal != null) {
@@ -61,20 +62,38 @@ function setVolume(volume) {
   getAudioWebms().forEach( webm => webm.volume = volume );
 }
 function toggleSubthreads() {
-  const stOn = settingOn('subthreads');
-  local('subthreads', !stOn);
+  const isOn = settingOn('subthreads');
+  local('subthreads', !isOn);
   if (!threadPage) return;
-  if (!stOn) {
+  if (!isOn) {
     subthreads();
   } else {
     window.location.reload();
   }
 }
+function toggleTestSHA1() {
+  const isOn = settingOn('testSHA1');
+  local('testSHA1', !isOn);
+  if (!threadPage) return;
+  if (!isOn) {
+    verifyContentFreshness();
+  }
+}
+function toggleAutoExpand() {
+  const isOn = settingOn('autoExpand');
+  local('autoExpand', !isOn);
+  if (!threadPage) return;
+  if (!isOn) {
+    openImgs();
+  } else {
+    close();
+  }
+}
 function toggleFilter() {
-  const cfOn = settingOn('catalogFilter');
-  local('catalogFilter', !cfOn);
+  const isOn = settingOn('catalogFilter');
+  local('catalogFilter', !isOn);
   if (!catalogPage) return;
-  if (!cfOn) {
+  if (!isOn) {
     catalogFilter();
   } else {
     window.location.reload();
@@ -84,20 +103,6 @@ function setThreadFilter(filterPattern) {
   local('threadFilter', filterPattern);
   if (!catalogPage || filterPattern === "") return;
   window.location.reload();
-}
-if (local('fullscreen') === undefined) local('fullscreen', 'false');
-if (local('subthreads') === undefined) local('subthreads', 'true');
-if (local('catalogFilter') === undefined) local('catalogFilter', 'true');
-if (!local('volume')) { // Set initial volume to 50%
-  setVolume(0.5);
-}
-
-if (boardBasePage || catalogPage) {
-  setOrderBy('date')
-  if (boardBasePage) { window.location.replace(initialLink + 'catalog') }
-}
-if (catalogPage) {
-  if (settingOn('catalogFilter')) catalogFilter();
 }
 function catalogFilter() {
   const threads = getThreads();
@@ -116,7 +121,29 @@ function catalogFilter() {
     }
   });
 }
+function togglePostDiffHighlight() {
+  const isOn = settingOn('postDiffHighlight');
+  local('postDiffHighlight', !isOn);
+}
 
+
+if (local('autoExpand') === undefined) local('autoExpand', 'false');
+if (local('fullscreen') === undefined) local('fullscreen', 'false');
+if (local('subthreads') === undefined) local('subthreads', 'true');
+if (local('catalogFilter') === undefined) local('catalogFilter', 'true');
+if (local('testSHA1') === undefined) local('testSHA1', 'true');
+if (local('postDiffHighlight') === undefined) local('postDiffHighlight', 'true');
+if (!local('volume')) { // Set initial volume to 50%
+  setVolume(0.5);
+}
+
+if (boardBasePage || catalogPage) {
+  setOrderBy('date')
+  if (boardBasePage) { window.location.replace(initialLink + 'catalog') }
+}
+if (catalogPage) {
+  if (settingOn('catalogFilter')) catalogFilter();
+}
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
   .map( el => el.innerHTML = '' )
 
@@ -166,6 +193,13 @@ function previousPost(post) {
 }
 function getPostId(post) {
   return post.id.slice(1);
+}
+function getPostIds() {
+  if (postIds.length == 0) {
+    postIds = getPosts().map( post => getPostId(post) )
+  }
+
+  return postIds;
 }
 function getPostMessage(post) {
   return post.querySelector('.postMessage');
@@ -347,7 +381,13 @@ observeDOM(document.body, function(m) {
       unmute(video)
       video.volume = local('volume');
       openedWebms.push(video);
-      chrome.runtime.sendMessage(extensionID, {action: 'testSHA1', url: added.src, dataId: getDataMD5(video)});
+      if (settingOn('testSHA1')) {
+        chrome.runtime.sendMessage(extensionID, {
+          action: 'testSHA1',
+          url: added.src,
+          dataId: getDataMD5(video)
+        });
+      }
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     }
@@ -421,14 +461,17 @@ if (threadPage) {
   loadData(subthreads, function() {
     if (settingOn('subthreads')) subthreads();
   });
+  loadData(postDiffHighlight, function() {
+    if (settingOn('postDiffHighlight')) postDiffHighlight();
+  });
+  // Other boards may have threads that contain videos, but there are usually fewer
   if (!gifsPage) {
     loadData(expandImages, function() {
-      expandImages();
-      // Other boards may have threads that contain videos, but there are usually fewer
-      setTimeout(() => {
+      if (settingOn('autoExpand')) expandImages();
+      if (settingOn('testSHA1')) {
         verifyContentFreshness();
         setSeenStats();
-      }, 10000);
+      }
     });
 
     if (getBoard() == "pol") {

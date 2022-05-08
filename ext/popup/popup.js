@@ -7,6 +7,7 @@ let activeTabParams = {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  mapBtn( select('.autoExpand'),     'autoExpand'      );
   mapBtn( select('.expand'),         'expand'          );
   mapBtn( select('.close'),          'close'           );
   mapBtn( select('.digits'),         'digits'          );
@@ -14,8 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.threadGraph'),    'threadGraph'     );
   mapBtn( select('.subthreads'),     'subthreads'      );
   mapBtn( select('.contentExtract'), 'contentExtract'  );
+  mapBtn( select('.toggleTestSHA1'), 'toggleTestSHA1'  );
   mapBtn( select('.fullScreen'),     'fullScreen'      );
   mapBtn( select('.catalogFilter'),  'catalogFilter'   );
+  mapBtn( select('.highlightNew'),   'highlightNew'    );
   mapInput( select('.threadFilter'), 'setThreadFilter' );
   mapSlider( select('#volume'),      'setVolume'       );
 });
@@ -67,9 +70,13 @@ function getVolume() {
 function getThreadFilter() {
   sendMsg({action: 'getThreadFilter'});
 }
+function getTextTransforms() {
+  sendMsg({action: 'getTextTransforms'});
+}
 
 getVolume();
 getThreadFilter();
+getTextTransforms();
 
 // Message passing
 
@@ -78,7 +85,6 @@ function sendMsg(msg) {
   chrome.tabs.query(activeTabParams, messagePush);
   function messagePush(tabs) {
     console.log(msg);
-    console.log(tabs[0]);
     chrome.tabs.sendMessage(tabs[0].id, msg);
   }
 }
@@ -101,6 +107,13 @@ function setThreadFilter(msg) {
   sendMsg({action: msg});
 }
 function updateFilter(inputId, input) {
+  filterSettings[inputId] = input;
+  console.log('changed filter for ' + inputId + ' to ' + input);
+}
+function setTextTransforms(msg) {
+  sendMsg({action: msg});
+}
+function updateTextTransforms(inputId, input) {
   filterSettings[inputId] = input;
   console.log('changed filter for ' + inputId + ' to ' + input);
 }

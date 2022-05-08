@@ -47,9 +47,8 @@ function subthreads() {
   const graphRedrawn = true;
 }
 
-function numbersGraph(posts) {
-  posts = checkP(posts)
-  var postIds = posts.map( post => getPostId(post) )
+function numbersGraph() {
+  var postIds = getPostIds()
   var graph = {}
   const postLength = postIds[0].length // Assuming all posts IDs will have same length
   postIds.map( postId => {
@@ -295,6 +294,24 @@ function contentExtract() {
   imageContent.map( img => threadElement.append(img) );
   vids.map( vid => threadElement.append(vid) );
   const graphRedrawn = true
+}
+
+function postDiffHighlight() {
+  chrome.runtime.sendMessage(extensionID, {
+    action: 'findNewPostIDsForThread',
+    url: initialLink,
+    postIds: getPostIds()
+  })
+}
+
+function highlightNewPosts(newPostIds) {
+  if (newPostIds && newPostIds.length > 0) {
+    for (postId of newPostIds) {
+      post = getPostById(postId)
+      post.style.backgroundColor = '#3f4b63'
+    }
+    console.log("New posts found: " + newPostIds)
+  }
 }
 
 if (!n_scripts) var n_scripts = 0;

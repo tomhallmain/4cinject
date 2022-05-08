@@ -15,27 +15,52 @@ files.map( file => loadScript(file) );
 
 chrome.runtime.onMessage.addListener(messageIn);
 
+function getArrayString(array) {
+  var arrayString = "["
+  for (i = 1; i <= array.length; i++) {
+    item = array[i-1]
+    switch (typeof(item)) {
+      case 'number':
+      case 'boolean':
+        arrayString = arrayString + item;
+        break;
+      case 'undefined':
+        arrayString = arrayString + 'undefined';
+        break;
+      case 'string':
+        arrayString = arrayString + '"' + item + '"';
+        break;
+    }
+
+    if (i < array.length) {
+      arrayString = arrayString + ","
+    }
+  }
+  arrayString = arrayString + "]"
+  return arrayString
+}
+
 function messageIn(message) {
   console.log('Content script received message: ');
   console.log(message);
-  var action = message.action;
-  var filterSettings = message.filterSettings;
-  var dataId = message.dataId;
-  event = (function(action, filterSettings, dataId) {
-    switch (action) {
-      case 'expand':         return 'openImgs()'; break;
-      case 'close':          return 'close()'; break;
-      case 'digits':         return 'console.log(numbersGraph())'; break;
-      case 'maxDigits':      return 'console.log(maxDigits())'; break;
-      case 'threadGraph':    return 'threadGraph()'; break;
-      case 'subthreads':     return 'toggleSubthreads()'; break;
-      case 'contentExtract': return 'contentExtract()'; break;
-      case 'fullScreen':     return 'toggleFullscreen()'; break;
-      case 'catalogFilter':  return 'toggleFilter()'; break;
+  event = (function(message) {
+    const filterSettings = message.filterSettings;
+    switch (message.action) {
+      case 'autoExpand':     return 'toggleAutoExpand()';
+      case 'expand':         return 'openImgs()';
+      case 'close':          return 'close()';
+      case 'digits':         return 'console.log(numbersGraph())';
+      case 'maxDigits':      return 'console.log(maxDigits())';
+      case 'threadGraph':    return 'threadGraph()';
+      case 'subthreads':     return 'toggleSubthreads()';
+      case 'contentExtract': return 'contentExtract()';
+      case 'fullScreen':     return 'toggleFullscreen()';
+      case 'catalogFilter':  return 'toggleFilter()';
+      case 'toggleTestSHA1': return 'toggleTestSHA1()';
+      case 'highlightNew':   return 'togglePostDiffHighlight()';
       
       case 'setVolume': 
         return 'setVolume(' + (filterSettings['volume'] || 50)/100 + ')';
-        break;
       
       case 'getVolume': 
         messageOut('volume', window.localStorage['volume']);
@@ -44,11 +69,12 @@ function messageIn(message) {
       case 'setThreadFilter':
         var pattern = filterSettings['threadFilter'].replaceAll('"', '\\"')
         return 'setThreadFilter("' + pattern + '")';
-        break;
       
       case 'setIsSeenContent':
-        return 'setIsSeenContent("' + dataId + '")';
-        break;
+        return 'setIsSeenContent("' + message.dataId + '")';
+      
+      case 'setNewPostStyle':
+        return 'highlightNewPosts(' + getArrayString(message.postIds) + ')';
       
       case 'getThreadFilter': 
         messageOut('threadFilter', window.localStorage['threadFilter']);
@@ -56,7 +82,7 @@ function messageIn(message) {
       
       default: console.log('Message not understood');
     };
-  })(action, filterSettings, dataId);
+  })(message);
   console.log(event);
   if (event) fireEvent(event);
 };
