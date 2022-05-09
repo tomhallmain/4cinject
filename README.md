@@ -19,12 +19,14 @@ After installation, find the icon popup in the top right corner of the browser. 
 - *ALT + Left/right arrow* - Jump: While subthreads setting is on move to next/previous _base_ post with content
 - *SHIFT + Right arrow* - While post is engaged, set post content to fullscreen
 - *SHIFT + Left arrow* - While post is engaged and content is fullscreen, exit fullscreen
+- *SHIFT + SPACE* - If HighlightNew is set and new posts are found, move between the new posts
 
 ### Settings
 
 | Setting        | Default  | Description                                                                                        | 
 |----------------|----------|----------------------------------------------------------------------------------------------------|
 | ThreadFilter   | unset    | Filter out threads in catalog by regex pattern                                                     |
+| TextTransforms | unset    | Replace all text in thread teasers and posts if matching regex pattern                             |
 | Volume         | 50%      | Initial volume level relative to system for all opened WebMs with audio                            |
 | Subthreads     | true     | On thread load, redraw the thread posts into a parent-child form                                   |
 | CatalogFilter  | true     | On catalog load applies ThreadFilter, highlights posts with high content ratio and challenge posts |

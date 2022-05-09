@@ -84,28 +84,51 @@ function openPreviousVideo(currentVideo) {
 
 function engagePost(post, thumb) {
   if (!post) return false;
-  const {type, content, expanded} = postContent(post);
-  const webm = type == 'webm'
-  var engageContent = content
-  if (!expanded) {
-    if (webm) {
-      openVideo(thumb, true);
-      engageContent = getVids(post, true);
-    } else { // type == 'img'
-      ImageExpansion.toggle(content);
-      engageContent = first(getExpandedImgs([thumb]));
+  if (thumb) {
+    const {type, content, expanded} = postContent(post, thumb);
+    const webm = type == 'webm'
+    var engageContent = content
+    if (!expanded && settingOn('autoExpand')) {
+      if (webm) {
+        openVideo(thumb, true);
+        engageContent = getVids(post, true);
+      } else { // type == 'img'
+        ImageExpansion.toggle(content);
+        engageContent = first(getExpandedImgs([thumb]));
+      }
+    }
+    if (settingOn('fullscreen')) {
+      engageContent.requestFullscreen();
+      //const v = vh + 50;
+      //if ((!webm && engageContent.height > v) 
+      //  || (webm && engageContent.videoHeight > v)) {
+      //} else if (fullscreen()) {
+      //  exitFullscreen();
+      //}
     }
   }
-  if (settingOn('fullscreen')) {
-    engageContent.requestFullscreen();
-    //const v = vh + 50;
-    //if ((!webm && engageContent.height > v) 
-    //  || (webm && engageContent.videoHeight > v)) {
-    //} else if (fullscreen()) {
-    //  exitFullscreen();
-    //}
-  }
   post.scrollIntoView();
+  return true
+}
+
+function previousNewPost() {
+  if (newPostIds.length == 0) return;
+  if ((currentNewPost - 1) >= 0) {
+    currentNewPost--
+    const post = getPostById(newPostIds[currentNewPost])
+    const thumb = post?.querySelector('.fileThumb')
+    engagePost(post, thumb)
+  }
+}
+
+function nextNewPost() {
+  if (newPostIds.length == 0) return;
+  if ((currentNewPost + 1) < newPostIds.length) {
+    currentNewPost++
+    const post = getPostById(newPostIds[currentNewPost])
+    const thumb = post?.querySelector('.fileThumb')
+    engagePost(post, thumb)
+  }
 }
 
 function nextContent(thumbs) {

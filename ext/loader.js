@@ -67,8 +67,20 @@ function messageIn(message) {
         break;
       
       case 'setThreadFilter':
-        var pattern = filterSettings['threadFilter'].replaceAll('"', '\\"')
+        var pattern = filterSettings['threadFilter'].replaceAll("\\", "\\\\").replaceAll('"', '\\"')
         return 'setThreadFilter("' + pattern + '")';
+      
+      case 'getThreadFilter': 
+        messageOut('threadFilter', window.localStorage['threadFilter']);
+        break;
+      
+      case 'setTextTransforms':
+        var pattern = filterSettings['textTransforms'].replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n")
+        return 'setTextTransforms("' + pattern + '")';
+      
+      case 'getTextTransforms': 
+        messageOut('textTransforms', window.localStorage['textTransforms']);
+        break;
       
       case 'setIsSeenContent':
         return 'setIsSeenContent("' + message.dataId + '")';
@@ -76,15 +88,13 @@ function messageIn(message) {
       case 'setNewPostStyle':
         return 'highlightNewPosts(' + getArrayString(message.postIds) + ')';
       
-      case 'getThreadFilter': 
-        messageOut('threadFilter', window.localStorage['threadFilter']);
-        break;
-      
       default: console.log('Message not understood');
     };
   })(message);
-  console.log(event);
-  if (event) fireEvent(event);
+  if (event) {
+    console.log(event);
+    fireEvent(event);
+  }
 };
 
 function fireEvent(toFire) {

@@ -304,7 +304,8 @@ function postDiffHighlight() {
   })
 }
 
-function highlightNewPosts(newPostIds) {
+function highlightNewPosts(_newPostIds) {
+  newPostIds = _newPostIds || []
   if (newPostIds && newPostIds.length > 0) {
     for (postId of newPostIds) {
       post = getPostById(postId)

@@ -17,6 +17,7 @@ const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
 var openedWebms = [], closedWebmThumbs = []; fullScreen = false
 var currentContent = -1; //, fullScreenRequests = 0;
+var currentNewPost = -1;
 var numContentItems = getThumbs().length;
 var numSeenContentItems = 0;
 var gifsPage = gifsMatch.test(initialLink);
@@ -24,6 +25,7 @@ var boardBasePage = boardBaseMatch.test(initialLink);
 var catalogPage = catalogMatch.test(initialLink);
 var threadPage = threadMatch.test(initialLink);
 var postIds = [];
+var newPostIds = [];
 
 function local(storageKey, toVal) {
   if (toVal != null) {
@@ -38,6 +40,11 @@ function settingOn(storageKey, checkVal) {
     return testVal === checkVal;
   } else {
     return testVal !== "false" && testVal !== undefined && testVal !== null;
+  }
+}
+function setDefault(storageKey, defaultValue) {
+  if (local(storageKey) === undefined) {
+    local(storageKey, defaultValue);
   }
 }
 function setOrderBy(order) {
@@ -121,21 +128,98 @@ function catalogFilter() {
     }
   });
 }
+function setTextTransforms(transformsString) {
+  local('textTransforms', transformsString);
+  const runTransforms = transformsString && transformsString !== ""
+  local('runTextTransforms', runTransforms)
+  if (!threadPage || !runTransforms) return;
+  window.location.reload();
+}
+function getTextTransforms() {
+  transformsString = local('textTransforms')
+  keyValues = transformsString.split(/(\n|,)/)
+  transforms = {}
+
+  for (pair of keyValues) {
+    try {
+      items = pair.split("==")
+      pattern = items[0]
+      const test = new RegExp(pattern, 'g')
+      replacement = items[1]
+      transforms[pattern] = replacement
+    }
+    catch {
+      console.log("Failed to add invalid transform: " + pair)
+    }
+  }
+
+  return transforms
+}
+function transformElementHTML(transforms, element) {
+  if (!transforms || !element) return;
+  var string = element.innerHTML
+  if (!string || string === '') return; 
+  var patternMatch = false
+  for (pattern in transforms) {
+    pattern_regex = new RegExp(pattern, 'g')
+    replacement = transforms[pattern]
+    if (pattern_regex?.test(string)) {
+      patternMatch = true
+      string = string.replaceAll(pattern_regex, replacement);
+    }
+  }
+  if (patternMatch) {
+    element.innerHTML = string
+  }
+}
+function transformTeaserTexts(transforms) {
+  transforms = transforms || getTextTransforms();
+  const threads = getThreads();
+  for (thread of threads) {
+    try {
+      var teaserEl = thread.querySelector('.teaser')
+      transformElementHTML(transforms, teaserEl);
+    }
+    catch (e) {
+      console.log("Could not get message or make replacements for thread teaser: ")
+      console.log(thread)
+      console.log(e)
+    }
+  }
+  console.log("Applied text transforms: " + local('textTransforms'))
+}
+function transformPostText(posts, transforms) {
+  transforms = transforms || getTextTransforms();
+  subject = getThreadSubject();
+  transformElementHTML(transforms, subject);
+  posts = checkP(posts);
+  for (post of posts) {
+    try {
+      var postMessageEl = getPostMessage(post)
+      transformElementHTML(transforms, postMessageEl);
+    }
+    catch (e) {
+      console.log("Could not get message or make replacements for post: ")
+      console.log(post)
+      console.log(e)
+    }
+  }
+  console.log("Applied text transforms: " + local('textTransforms'))
+}
 function togglePostDiffHighlight() {
   const isOn = settingOn('postDiffHighlight');
   local('postDiffHighlight', !isOn);
 }
 
 
-if (local('autoExpand') === undefined) local('autoExpand', 'false');
-if (local('fullscreen') === undefined) local('fullscreen', 'false');
-if (local('subthreads') === undefined) local('subthreads', 'true');
-if (local('catalogFilter') === undefined) local('catalogFilter', 'true');
-if (local('testSHA1') === undefined) local('testSHA1', 'true');
-if (local('postDiffHighlight') === undefined) local('postDiffHighlight', 'true');
-if (!local('volume')) { // Set initial volume to 50%
-  setVolume(0.5);
-}
+setDefault('autoExpand', 'false');
+setDefault('fullscreen', 'false');
+setDefault('subthreads', 'true');
+setDefault('catalogFilter', 'true');
+setDefault('testSHA1', 'true');
+setDefault('postDiffHighlight', 'true');
+
+if (!local('volume')) setVolume(0.5); // Set initial volume to 50%
 
 if (boardBasePage || catalogPage) {
   setOrderBy('date')
@@ -143,7 +227,9 @@ if (boardBasePage || catalogPage) {
 }
 if (catalogPage) {
   if (settingOn('catalogFilter')) catalogFilter();
+  if (settingOn('runTextTransforms')) transformTeaserTexts();
 }
+
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
   .map( el => el.innerHTML = '' )
 
@@ -204,20 +290,29 @@ function getPostIds() {
 function getPostMessage(post) {
   return post.querySelector('.postMessage');
 }
-function postContent(post) {
-  const thumb = first(getThumbs(post));
-  const expanded = thumbHidden(thumb);
-  const thumbImg = getThumbImg(thumb);
-  const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
-  const content = (expanded && type == 'img' ? first(getExpandedImgs([thumb]))
-    : expanded ? getVids(post, true) : thumbImg);
-  return {type: type, content: content, expanded: expanded}
+function postContent(post, thumb) {
+  if (!thumb) thumb = post.querySelector('.fileThumb')
+  if (thumb) {
+    const expanded = thumbHidden(thumb);
+    const thumbImg = getThumbImg(thumb);
+    const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
+    const content = (expanded && type == 'img' ? first(getExpandedImgs([thumb]))
+      : expanded ? getVids(post, true) : thumbImg);
+    return {type: type, content: content, expanded: expanded}
+  }
+  else {
+    return {type: null, content: null, expanded: false}
+  }
 }
 function getPostById(id) {
   return threadElement.querySelector('#p' + id);
 }
 function getOriginalPost() {
   return threadElement.querySelector('.post.op');
+}
+function getThreadSubject() {
+  const subjects = getOriginalPost().querySelectorAll('.subject');
+  return subjects[subjects.length - 1];
 }
 function getPostInSeries(series, index) {
   if (series == 'thumbs' || series === undefined) {
@@ -326,12 +421,12 @@ function getElementByDataMD5(dataMD5) {
 }
 function verifyContentFreshness() {
   getThumbs().map( thumb => {
-      chrome.runtime.sendMessage(extensionID, {
-        action: 'testSHA1',
-        url: thumb.href,
-        dataId: thumb.querySelector("img").getAttribute('data-md5')
-      })
-    });
+    chrome.runtime.sendMessage(extensionID, {
+      action: 'testSHA1',
+      url: thumb.href,
+      dataId: thumb.querySelector("img").getAttribute('data-md5')
+    })
+  });
 }
 
 
@@ -404,6 +499,14 @@ window.addEventListener("keydown", function (event) {
   if (event.defaultPrevented) { return }
 
   switch (event.key) {
+    case " ":
+      if (event.shiftKey) {
+        nextNewPost();
+      }
+      else if (event.altKey) {
+        previousNewPost();
+      }
+      break;
     case "ArrowLeft":
       var currentVideo = last(openedWebms);
       if (event.shiftKey) {
@@ -458,21 +561,29 @@ if (threadPage) {
   while (n_scripts<3) { sleepAsync(120) }
 
   loadData(maxDigits, function() {reportDigits()});
-  loadData(subthreads, function() {
-    if (settingOn('subthreads')) subthreads();
-  });
-  loadData(postDiffHighlight, function() {
-    if (settingOn('postDiffHighlight')) postDiffHighlight();
-  });
+  if (settingOn('subthreads')) {
+    loadData(subthreads, function() {
+      subthreads();
+    });
+  }
+  if (settingOn('postDiffHighlight')) {
+    loadData(postDiffHighlight, function() {
+      postDiffHighlight();
+    });
+  }
+  if (settingOn('runTextTransforms')) transformPostText();
   // Other boards may have threads that contain videos, but there are usually fewer
   if (!gifsPage) {
-    loadData(expandImages, function() {
-      if (settingOn('autoExpand')) expandImages();
-      if (settingOn('testSHA1')) {
-        verifyContentFreshness();
-        setSeenStats();
-      }
-    });
+    if (settingOn('autoExpand')) {
+      loadData(expandImages, function() {
+        expandImages();
+      });
+    }
+    
+    if (settingOn('testSHA1')) {
+      verifyContentFreshness();
+      setSeenStats();
+    }
 
     if (getBoard() == "pol") {
       loadData(idFlagGraph, function() { reportFlags() });
@@ -483,5 +594,6 @@ if (threadPage) {
 // Defined empty in case of undefined functions
 if (!expandImages) var expandImages = function() { }
 if (!maxDigits) var maxDigits = function() { }
+if (!postDiffHighlight) var postDiffHighlight = function() { }
 if (!subthreads) var subthreads = function() { }
 if (!idFlagGraph) var idFlagGraph = function() { }

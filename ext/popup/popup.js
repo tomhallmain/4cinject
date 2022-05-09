@@ -17,9 +17,10 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn( select('.contentExtract'), 'contentExtract'  );
   mapBtn( select('.toggleTestSHA1'), 'toggleTestSHA1'  );
   mapBtn( select('.fullScreen'),     'fullScreen'      );
-  mapBtn( select('.catalogFilter'),  'catalogFilter'   );
   mapBtn( select('.highlightNew'),   'highlightNew'    );
+  mapBtn( select('.catalogFilter'),  'catalogFilter'   );
   mapInput( select('.threadFilter'), 'setThreadFilter' );
+  mapInput( select('.textTransforms'), 'setTextTransforms' );
   mapSlider( select('#volume'),      'setVolume'       );
 });
 
@@ -31,8 +32,12 @@ chrome.runtime.onMessage.addListener(
         select('#volume').value = request.data * 100
         break;
       case ('threadFilter'):
-        if (request.data === undefined) return
+        if (request.data === undefined || request.data === '') return
         select('.threadFilter').innerHTML = request.data
+        break;
+      case ('textTransforms'):
+        if (request.data === undefined || request.data === '') return
+        select('.textTransforms').innerHTML = request.data
         break;
     }
   }
@@ -49,19 +54,19 @@ select('.threadFilter').addEventListener("keydown", function(e) {
 function select(selector) {
   return document.querySelector(selector);
 }
-function mapBtn(btn, msg) {
-  btn.addEventListener('click', function() { btnPressed(msg) });
+function mapBtn(btn, action) {
+  btn.addEventListener('click', function() { btnPressed(action) });
 }
-function mapInput(input, msg) {
+function mapInput(input, action) {
   input.addEventListener('change', function() {
     updateFilter(input.className, input.value);
-    setThreadFilter(msg);
+    sendMessageWithAction(action);
   });
 }
-function mapSlider(slider, msg) {
+function mapSlider(slider, action) {
   slider.addEventListener('change', function() { 
     updateFilter(slider.id, slider.value)
-    setVolume(msg);
+    sendMessageWithAction(action);
   });
 }
 function getVolume() {
@@ -96,24 +101,14 @@ function applyFilter(msg) {
 
 // Actions
 
-function btnPressed(msg) {
-  console.log('button pressed for ' + msg);
-  sendMsg({action: msg});
+function btnPressed(action) {
+  console.log('button pressed for ' + action);
+  sendMessageWithAction(action)
 }
-function setVolume(msg) {
-  sendMsg({action: msg});
-}
-function setThreadFilter(msg) {
-  sendMsg({action: msg});
+function sendMessageWithAction(action) {
+  sendMsg({action: action});
 }
 function updateFilter(inputId, input) {
-  filterSettings[inputId] = input;
-  console.log('changed filter for ' + inputId + ' to ' + input);
-}
-function setTextTransforms(msg) {
-  sendMsg({action: msg});
-}
-function updateTextTransforms(inputId, input) {
   filterSettings[inputId] = input;
   console.log('changed filter for ' + inputId + ' to ' + input);
 }
