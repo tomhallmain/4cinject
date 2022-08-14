@@ -5,7 +5,7 @@ if (activeStyleSheet !== 'Tomorrow') {
   setActiveStyleSheet('Tomorrow');
 }
 
-const initialLink = window.location.href;
+const initialLink = window.location.href.replaceAll(/#.+/g, '');
 const threadElement = document.querySelector('.thread');
 const threadId = threadElement?.id
 const quoteLinks = threadElement?.querySelector('.quoteLink');
@@ -125,6 +125,8 @@ function catalogFilter() {
       t.style.backgroundColor = 'teal';
     } else if (contentThread(t)) {
       t.style.backgroundColor = 'green';
+    } else if (externalLinkThread(t)) {
+      t.style.backgroundColor = 'darkblue';
     }
   });
 }
@@ -186,7 +188,6 @@ function transformTeaserTexts(transforms) {
       console.log(e)
     }
   }
-  console.log("Applied text transforms: " + local('textTransforms'))
 }
 function transformPostText(posts, transforms) {
   transforms = transforms || getTextTransforms();
@@ -204,11 +205,25 @@ function transformPostText(posts, transforms) {
       console.log(e)
     }
   }
-  console.log("Applied text transforms: " + local('textTransforms'))
 }
 function togglePostDiffHighlight() {
   const isOn = settingOn('postDiffHighlight');
   local('postDiffHighlight', !isOn);
+}
+function checkForBotAndShillThreads() {
+  const threads = getThreads()
+  for (thread of threads) {
+    const threadId = getThreadId(thread)
+    const thumb = getThumbImg(thread)
+    if (threadId && thumb) {
+      chrome.runtime.sendMessage(extensionID, {
+        action: 'testSHA1ForThreadImage',
+        url: thumb.src,
+        dataId: thumb.getAttribute('data-id'),
+        threadId: threadId
+      })
+    }
+  }
 }
 
 
@@ -228,6 +243,7 @@ if (boardBasePage || catalogPage) {
 if (catalogPage) {
   if (settingOn('catalogFilter')) catalogFilter();
   if (settingOn('runTextTransforms')) transformTeaserTexts();
+  if (settingOn('testSHA1')) checkForBotAndShillThreads();
 }
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
@@ -245,17 +261,20 @@ function checkT(thumbs) { return thumbs || getThumbs() }
 function getThreads() {
   return [].slice.call(document.querySelectorAll('.thread'));
 }
+function getThreadFromElement(el) {
+  return el?.closest('.thread');
+}
 function getPosts() {
   return [].slice.call(threadElement.querySelectorAll('.post'));
 }
 function getPostFromElement(el) {
-  return el.closest('.post');
+  return el?.closest('.post');
 }
 function postContainer(post) {
-  return post.closest('.postContainer');
+  return post?.closest('.postContainer');
 }
 function basePost(post) {
-  return postContainer(post).querySelector('.post');
+  return postContainer(post)?.querySelector('.post');
 }
 function getCurrentContent(thumbs) {
   return checkT(thumbs)[currentContent];
@@ -276,6 +295,9 @@ function previousPost(post) {
   } else {
     return getOriginalPost();
   }
+}
+function getThreadId(thread) {
+  return thread.id.slice(7) // Remove "thread-"
 }
 function getPostId(post) {
   return post.id.slice(1);
@@ -408,6 +430,10 @@ function challengeThread(thread) {
   const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
   return ylylMatch.test(thread.textContent)
 }
+function externalLinkThread(thread) {
+  const httpMatch = /http/
+  return httpMatch.test(thread.textContent)
+}
 function getDataMD5(expandedItem) {
   if (expandedItem.className == "expandedWebm") {
     return getThumb(expandedItem).querySelector("img").getAttribute("data-md5");
@@ -419,14 +445,19 @@ function getDataMD5(expandedItem) {
 function getElementByDataMD5(dataMD5) {
   return document.querySelector('[data-md5="' + dataMD5 + '"]')
 }
+function getElementByDataId(dataId) {
+  return document.querySelector('[data-id="' + dataId + '"]')
+}
 function verifyContentFreshness() {
-  getThumbs().map( thumb => {
-    chrome.runtime.sendMessage(extensionID, {
-      action: 'testSHA1',
-      url: thumb.href,
-      dataId: thumb.querySelector("img").getAttribute('data-md5')
-    })
-  });
+  getThumbs()
+    .filter( thumb => !thumb.href?.endsWith(".webm")) // test these only on open
+    .map( thumb => {
+      chrome.runtime.sendMessage(extensionID, {
+        action: 'testSHA1',
+        url: thumb.href,
+        dataId: thumb.querySelector("img").getAttribute('data-md5')
+      })
+    });
 }
 
 
@@ -439,7 +470,15 @@ function getFlagCode(post) {
   return post.querySelector("[class*='flag']")?.class.replace("flag flag-", "")
 }
 function getFlag(post) {
-  return post.querySelector("[class*='flag']")?.title
+  const nameBlock = post.querySelector("[class=nameBlock]")
+
+  if (!nameBlock) return
+
+  const flag = nameBlock.querySelector("[class*='flag']")?.title
+
+  if (flag) return flag
+
+  return nameBlock.querySelector("[class*='bfl']")?.title
 }
 function getPostsByPosterId(posterId, posts) {
   return checkP(posts).filter(post => getPosterId(post) == posterId);
@@ -572,6 +611,11 @@ if (threadPage) {
     });
   }
   if (settingOn('runTextTransforms')) transformPostText();
+  if (settingOn('testSHA1')) {
+    verifyContentFreshness();
+    setSeenStats();
+  }
+
   // Other boards may have threads that contain videos, but there are usually fewer
   if (!gifsPage) {
     if (settingOn('autoExpand')) {
@@ -579,14 +623,16 @@ if (threadPage) {
         expandImages();
       });
     }
-    
-    if (settingOn('testSHA1')) {
-      verifyContentFreshness();
-      setSeenStats();
-    }
 
-    if (getBoard() == "pol") {
+    const board = getBoard();
+
+    if (board === "pol") {
       loadData(idFlagGraph, function() { reportFlags() });
+      loadData(reportNPosts, function() { reportNPosts() });
+    }
+    else if (board === "biz") {
+      loadData(reportOpPosts, function() { reportOpPosts() });
+      loadData(reportNPosts, function() { reportNPosts() });
     }
   }
 }

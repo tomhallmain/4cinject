@@ -83,10 +83,16 @@ function messageIn(message) {
         break;
       
       case 'setIsSeenContent':
-        return 'setIsSeenContent("' + message.dataId + '")';
+        return 'setIsSeenContent("' + message.dataId + '", true)';
       
+      case 'setIsSeenContentNotStored':
+        return 'setIsSeenContent("' + message.dataId + '", false)';
+
       case 'setNewPostStyle':
         return 'highlightNewPosts(' + getArrayString(message.postIds) + ')';
+
+      case 'setIsBotThread':
+        return 'setIsBotThread("' + message.dataId + '")'
       
       default: console.log('Message not understood');
     };

@@ -189,15 +189,15 @@ function exitFullscreen() {
   }
 }
 
-function setIsSeenContent(dataId) {
+function setIsSeenContent(dataMD5, isMatchStored) {
   numSeenContentItems++;
-  thumb = getElementByDataMD5(dataId);
+  thumb = getElementByDataMD5(dataMD5);
 
   if (!thumb) {
     return;
   }
 
-  /*
+  /* TODO auto un-expand
   if (thumb.nextSibling) {
     contentClass = thumb.nextSibling.className;
     if (contentClass == "expanded-thumb") {
@@ -210,11 +210,26 @@ function setIsSeenContent(dataId) {
   */
 
   const stalePost = getPostFromElement(thumb);
-  stalePost.style.borderColor = 'red';
-  
-  if (gifsPage) {
-    setSeenStats();
+
+  if (isMatchStored) {
+    stalePost.style.borderColor = 'red';
   }
+  else {
+    stalePost.style.borderColor = 'orange';
+  }
+  
+  setSeenStats();
+}
+
+function setIsBotThread(dataId) {
+  thumb = getElementByDataId(dataId);
+
+  if (!thumb) {
+    return
+  }
+
+  const botThread = getThreadFromElement(thumb)
+  botThread.style.borderColor = 'red';
 }
 
 if (!n_scripts) var n_scripts = 0;
