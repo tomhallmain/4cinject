@@ -1,31 +1,267 @@
 
 // SETUP ////////////
 
+class Board {
+  name;
+  isWorkSafe;
+  isGif;
+
+  constructor(url) {
+    const route = url.replaceAll(/.+4chan(nel)?.org\//g, "")
+    this.name = route.substring(0, route.indexOf("/"))
+    this.isWorkSafe = url.includes('4channel.org');
+    this.isGif = this.name === 'gif';
+  }
+}
+
+class Post {
+  element;
+  hasContent;
+  id;
+
+  constructor(element) {
+    this.element = element;
+    this.id = this.element?.id.slice(1);
+  }
+
+  postContainer() {
+    return this.element?.closest('.postContainer');
+  }
+}
+
+class Thread4C {
+  isThreadPage;
+  element;
+  id;
+  link;
+  quoteLinks;
+  postIds;
+  newPostIds;
+  openedWebms;
+  closedWebmThumbs;
+  currentContent;
+  currentNewPost;
+  numContentItems;
+  numSeenContentItems;
+
+  constructor(url, element) {
+    if (url) {
+      this.isThreadPage = true;
+      this.link = url;
+      this.element = document.querySelector('.thread');
+      this.id = this.element?.id;
+      this.quoteLinks = document.querySelector('.quoteLink');
+      this.postIds = [];
+      this.newPostIds = [];
+      this.openedWebms = [];
+      this.closedWebmThumbs = [];
+      this.currentContent = -1;
+      this.currentNewPost = -1;
+      this.numContentItems = this.getThumbs()?.length || 0;
+      this.numSeenContentItems = 0;
+    }
+    else if (element) {
+      this.isThreadPage = false;
+      this.element = element;
+      this.id = this.element.id;
+      this.link = this.element.getAttribute('href');
+    }
+    else {
+      throw new Error('No url or element provided to Thread4C constructor');
+    }
+  }
+
+  getTeaser() {
+    return this.element.querySelector('.teaser');
+  }
+
+  setBackgroundColor(color) {
+    this.element.style.backgroundColor = color;
+  }
+
+  getPosts() {
+    return [].slice.call(this.element.querySelectorAll('.post'));
+  }
+
+  checkP(posts) { return posts || this.getPosts() }
+
+  getPostIds() {
+    if (this.postIds.length == 0) {
+      this.postIds = this.getPosts().map( post => getPostId(post) );
+    }
+
+    return this.postIds;
+  }
+
+  getOriginalPost() {
+    return this.element.querySelector('.post.op');
+  }
+
+  getCurrentContent(thumbs) {
+    return this.checkT(thumbs)[this.currentContent];
+  }
+
+  getPostById(id) {
+    return this.element.querySelector('#p' + id);
+  }
+
+  getSubject() {
+    const subjects = this.getOriginalPost().querySelectorAll('.subject');
+    return subjects[subjects.length - 1];
+  }
+
+  getPostInSeries(series, index) {
+    if (series == 'thumbs' || series === undefined) {
+      const thumbs = this.getThumbs();
+      index = index || this.currentContent;
+      return getPostFromElement(thumbs[index]);
+    }
+  }
+
+  currentPost() {
+    return getPostFromElement(this.getCurrentContent());
+  }
+
+  nextPost(post) {
+    if (post) {
+      return post.parentElement?.nextSibling?.querySelector('.post');
+    } else {
+      return this.getOriginalPost();
+    }
+  }
+
+  previousPost(post) {
+    if (post) {
+      return post.parentElement?.previousSibling?.querySelector('.post');
+    } else {
+      return this.getOriginalPost();
+    }
+  }
+
+  getPostsByPosterId(posterId, posts) {
+    return this.checkP(posts).filter(post => getPosterId(post) == posterId);
+  }
+
+  getPostsByOP() {
+    return this.getPostsByPosterId(getPosterId(this.getOriginalPost()))
+  }
+
+  checkT(thumbs) { return thumbs || this.getThumbs() }
+
+  getThumbs(el) {
+    el = el || this.element;
+    return [].slice.call(el.querySelectorAll('.fileThumb'));
+  }
+
+  getThumbImgs(thumbs, includeHidden) {
+    thumbs = this.checkT(thumbs);
+
+    if (includeHidden) {
+      return thumbs.reduce( (imgs, thumb) =>
+          (getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
+    } else {
+      return thumbs.reduce( (imgs, thumb) => (thumb.style.display === ''
+          && getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
+    }
+  }
+
+  getExpandedImgs(thumbs) {
+    thumbs = this.checkT(thumbs);
+    return thumbs.reduce( (acc, thumb) => {
+        var img = thumb.querySelector('.expanded-thumb');
+        if (img) { acc.push(img) } return acc }, []);
+  }
+
+  getVids(el, first) {
+    el = el || this.element
+    if (first) return el.querySelector('video');
+    return [].slice.call(el.querySelectorAll('video'));
+  }
+
+  getExpandedWebms(thumbs) {
+    thumbs = this.checkT(thumbs);
+    // Display style seems to be set to none only in expanded video case
+    return thumbs.reduce( (webms, thumb) =>
+        (thumb.style.display === 'none' && webms.push(thumb.nextSibling), webms), [] );
+  }
+
+  getCloseLinks() {
+    return [].slice.call(this.element.querySelectorAll('a'))
+             .filter( a => a.textContent === 'Close' );
+  }
+
+  getAudioWebms() {
+    return this.getExpandedWebms().filter( webm => hasAudio(webm) );
+  }
+
+  threadMeta() {
+    const data = [].slice.call(this.element.querySelector('.meta').querySelectorAll('b'))
+      .map(b => parseInt(b.textContent));
+    return {replies: data[0], imgs: data[1]}
+  }
+
+  hasImageContent(nImagesBase, nImagesContent, proportionImages) {
+    nImagesBase = nImagesBase || 9;
+    nImagesContent = nImagesContent || 50;
+    proportionImages = proportionImages || 0.6;
+    const meta = this.threadMeta();
+    return meta.imgs > nImagesBase &&
+        (meta.imgs >= nImagesContent || (meta.imgs / meta.replies) > proportionImages);
+  }
+
+  hasChallenge() {
+    const pattern = /(y[a-z]{2}yl|Y[A-Z]{2}YL|u lose)/;
+    return pattern.test(this.element.textContent);
+  }
+
+  hasExternalLink() {
+    const pattern = /http/;
+    return pattern.test(this.element.textContent);
+  }
+
+  verifyContentFreshness() {
+    this.getThumbs()
+      .filter( thumb => !thumb.href?.endsWith(".webm")) // test these only on open
+      .map( thumb => {
+        chrome.runtime.sendMessage(extensionID, {
+          action: 'testSHA1',
+          url: thumb.href,
+          dataId: thumb.querySelector("img").getAttribute('data-md5')
+        })
+      });
+  }
+
+  getProportionSeenContent() {
+    if (this.numContentItems == 0) {
+      return -1;
+    } else {
+      return this.numSeenContentItems / this.numContentItems;
+    }
+  }
+
+  removeOpenedWebM(video) {
+    this.openedWebms = arrayRemove(this.openedWebms, video);
+  }
+}
+
 if (activeStyleSheet !== 'Tomorrow') {
   setActiveStyleSheet('Tomorrow');
 }
 
 const initialLink = window.location.href.replaceAll(/#.+/g, '');
-const threadElement = document.querySelector('.thread');
-const threadId = threadElement?.id
-const quoteLinks = threadElement?.querySelector('.quoteLink');
-
-const gifsMatch = /4chan(nel)?.org\/(gif|wsg)/;
+const board = new Board(initialLink);
 const boardBaseMatch = /4chan(nel)?.org\/[a-z]+\/$/
 const catalogMatch = /4chan(nel)?.org\/[a-z]+\/catalog$/
 const threadMatch = /boards.4chan(nel)?.org\/[a-z]+\/thread\//
 
-var openedWebms = [], closedWebmThumbs = []; fullScreen = false
-var currentContent = -1; //, fullScreenRequests = 0;
-var currentNewPost = -1;
-var numContentItems = getThumbs().length;
-var numSeenContentItems = 0;
-var gifsPage = gifsMatch.test(initialLink);
 var boardBasePage = boardBaseMatch.test(initialLink);
-var catalogPage = catalogMatch.test(initialLink);
-var threadPage = threadMatch.test(initialLink);
-var postIds = [];
-var newPostIds = [];
+var catalogPage = !boardBasePage && catalogMatch.test(initialLink);
+var threadPage = !boardBasePage && !catalogPage && threadMatch.test(initialLink);
+
+const thread = threadPage ? new Thread4C(initialLink) : null;
+var threads;
+var fullScreen = false
+//var fullScreenRequests = 0;
 
 function local(storageKey, toVal) {
   if (toVal != null) {
@@ -34,6 +270,7 @@ function local(storageKey, toVal) {
     return window.localStorage[storageKey];
   }
 }
+
 function settingOn(storageKey, checkVal) {
   const testVal = local(storageKey)
   if (checkVal) {
@@ -42,11 +279,13 @@ function settingOn(storageKey, checkVal) {
     return testVal !== "false" && testVal !== undefined && testVal !== null;
   }
 }
+
 function setDefault(storageKey, defaultValue) {
   if (local(storageKey) === undefined) {
     local(storageKey, defaultValue);
   }
 }
+
 function setOrderBy(order) {
   orderSetting = '"orderby":"' + order + '"';
   catalogSettings = local('catalog-settings');
@@ -58,16 +297,20 @@ function setOrderBy(order) {
     if (catalogPage) {  window.location.reload() }
   }
 }
+
 function toggleFullscreen() {
   local('fullscreen', !settingOn('fullscreen'));
 }
+
 function fullscreen() {
   return document.fullscreen;
 }
+
 function setVolume(volume) {
   local('volume', volume);
-  getAudioWebms().forEach( webm => webm.volume = volume );
+  thread?.getAudioWebms().forEach( webm => webm.volume = volume );
 }
+
 function toggleSubthreads() {
   const isOn = settingOn('subthreads');
   local('subthreads', !isOn);
@@ -78,6 +321,7 @@ function toggleSubthreads() {
     window.location.reload();
   }
 }
+
 function toggleTestSHA1() {
   const isOn = settingOn('testSHA1');
   local('testSHA1', !isOn);
@@ -86,6 +330,7 @@ function toggleTestSHA1() {
     verifyContentFreshness();
   }
 }
+
 function toggleAutoExpand() {
   const isOn = settingOn('autoExpand');
   local('autoExpand', !isOn);
@@ -96,6 +341,7 @@ function toggleAutoExpand() {
     close();
   }
 }
+
 function toggleFilter() {
   const isOn = settingOn('catalogFilter');
   local('catalogFilter', !isOn);
@@ -106,11 +352,13 @@ function toggleFilter() {
     window.location.reload();
   }
 }
+
 function setThreadFilter(filterPattern) {
   local('threadFilter', filterPattern);
   if (!catalogPage || filterPattern === "") return;
   window.location.reload();
 }
+
 function catalogFilter() {
   const threads = getThreads();
   const threadFilter = local('threadFilter')
@@ -118,18 +366,24 @@ function catalogFilter() {
   if (threadFilter != undefined && threadFilter !== "") {
     filterPattern = new RegExp(threadFilter)
   }
-  threads.map( t => {
-    if (filterPattern?.test(t.textContent)) {
-      t.remove();
-    } else if (challengeThread(t)) {
-      t.style.backgroundColor = 'teal';
-    } else if (contentThread(t)) {
-      t.style.backgroundColor = 'green';
-    } else if (externalLinkThread(t)) {
-      t.style.backgroundColor = 'darkblue';
+  for (var i = 0; i < threads.length; i++) {
+    const t = threads[i];
+    if (filterPattern?.test(t.element.textContent)) {
+      t.element.remove();
+      threads.splice(i, 1);
     }
-  });
+    else if (t.hasChallenge()) {
+      t.setBackgroundColor('teal');
+    }
+    else if (t.hasImageContent()) {
+      t.setBackgroundColor('green');
+    }
+    else if (t.hasExternalLink()) {
+      t.setBackgroundColor('darkblue');
+    }
+  }
 }
+
 function setTextTransforms(transformsString) {
   local('textTransforms', transformsString);
   const runTransforms = transformsString && transformsString !== ""
@@ -137,6 +391,7 @@ function setTextTransforms(transformsString) {
   if (!threadPage || !runTransforms) return;
   window.location.reload();
 }
+
 function getTextTransforms() {
   transformsString = local('textTransforms')
   keyValues = transformsString.split(/(\n|,)/)
@@ -157,43 +412,45 @@ function getTextTransforms() {
 
   return transforms
 }
+
 function transformElementHTML(transforms, element) {
   if (!transforms || !element) return;
   var string = element.innerHTML
-  if (!string || string === '') return; 
-  var patternMatch = false
+  if (!string || string === '') return;
+  var patternMatch = false;
   for (pattern in transforms) {
-    pattern_regex = new RegExp(pattern, 'g')
-    replacement = transforms[pattern]
+    pattern_regex = new RegExp(pattern, 'g');
+    replacement = transforms[pattern];
     if (pattern_regex?.test(string)) {
-      patternMatch = true
+      patternMatch = true;
       string = string.replaceAll(pattern_regex, replacement);
     }
   }
   if (patternMatch) {
-    element.innerHTML = string
+    element.innerHTML = string;
   }
 }
+
 function transformTeaserTexts(transforms) {
   transforms = transforms || getTextTransforms();
   const threads = getThreads();
-  for (thread of threads) {
+  for (t of threads) {
     try {
-      var teaserEl = thread.querySelector('.teaser')
+      var teaserEl = t.getTeaser();
       transformElementHTML(transforms, teaserEl);
     }
     catch (e) {
-      console.log("Could not get message or make replacements for thread teaser: ")
-      console.log(thread)
-      console.log(e)
+      console.log("Could not get message or make replacements for thread teaser: ");
+      console.log(e);
     }
   }
 }
+
 function transformPostText(posts, transforms) {
   transforms = transforms || getTextTransforms();
-  subject = getThreadSubject();
+  subject = thread.getSubject();
   transformElementHTML(transforms, subject);
-  posts = checkP(posts);
+  posts = thread.checkP(posts);
   for (post of posts) {
     try {
       var postMessageEl = getPostMessage(post)
@@ -201,26 +458,26 @@ function transformPostText(posts, transforms) {
     }
     catch (e) {
       console.log("Could not get message or make replacements for post: ")
-      console.log(post)
-      console.log(e)
+      console.log(e);
     }
   }
 }
+
 function togglePostDiffHighlight() {
   const isOn = settingOn('postDiffHighlight');
   local('postDiffHighlight', !isOn);
 }
+
 function checkForBotAndShillThreads() {
   const threads = getThreads()
-  for (thread of threads) {
-    const threadId = getThreadId(thread)
-    const thumb = getThumbImg(thread)
-    if (threadId && thumb) {
+  for (t of threads) {
+    const thumb = getThumbImg(t.element);
+    if (t.id && thumb) {
       chrome.runtime.sendMessage(extensionID, {
         action: 'testSHA1ForThreadImage',
         url: thumb.src,
         dataId: thumb.getAttribute('data-id'),
-        threadId: threadId
+        threadId: t.id
       })
     }
   }
@@ -252,107 +509,67 @@ if (catalogPage) {
 
 // GENERAL ////////////
 
-function getBoard() {
-  route = initialLink.replaceAll(/.+4chan(nel)?.org\//g, "")
-  return route.substring(0, route.indexOf("/"))
-}
-function checkP(posts) { return posts || getPosts() }
-function checkT(thumbs) { return thumbs || getThumbs() }
 function getThreads() {
-  return [].slice.call(document.querySelectorAll('.thread'));
+  if (!threads) {
+    threads = [].slice.call(document.querySelectorAll('.thread'))
+        .map(threadEl => new Thread4C(null, threadEl));
+  }
+
+  return threads
 }
+
 function getThreadFromElement(el) {
   return el?.closest('.thread');
 }
-function getPosts() {
-  return [].slice.call(threadElement.querySelectorAll('.post'));
-}
+
 function getPostFromElement(el) {
   return el?.closest('.post');
 }
+
 function postContainer(post) {
   return post?.closest('.postContainer');
 }
+
 function basePost(post) {
   return postContainer(post)?.querySelector('.post');
 }
-function getCurrentContent(thumbs) {
-  return checkT(thumbs)[currentContent];
-}
-function currentPost() {
-  return getPostFromElement(getCurrentContent());
-}
-function nextPost(post) {
-  if (post) {
-    return post.parentElement?.nextSibling?.querySelector('.post');
-  } else {
-    return getOriginalPost();
-  }
-}
-function previousPost(post) {
-  if (post) {
-    return post.parentElement?.previousSibling?.querySelector('.post');
-  } else {
-    return getOriginalPost();
-  }
-}
+
 function getThreadId(thread) {
   return thread.id.slice(7) // Remove "thread-"
 }
+
 function getPostId(post) {
   return post.id.slice(1);
 }
-function getPostIds() {
-  if (postIds.length == 0) {
-    postIds = getPosts().map( post => getPostId(post) )
-  }
 
-  return postIds;
-}
 function getPostMessage(post) {
   return post.querySelector('.postMessage');
 }
+
 function postContent(post, thumb) {
   if (!thumb) thumb = post.querySelector('.fileThumb')
   if (thumb) {
     const expanded = thumbHidden(thumb);
     const thumbImg = getThumbImg(thumb);
     const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
-    const content = (expanded && type == 'img' ? first(getExpandedImgs([thumb]))
-      : expanded ? getVids(post, true) : thumbImg);
+    const content = (expanded && type == 'img' ?
+        first(thread.getExpandedImgs([thumb])) : expanded ?
+          thread.getVids(post, true) : thumbImg);
     return {type: type, content: content, expanded: expanded}
   }
   else {
     return {type: null, content: null, expanded: false}
   }
 }
-function getPostById(id) {
-  return threadElement.querySelector('#p' + id);
-}
-function getOriginalPost() {
-  return threadElement.querySelector('.post.op');
-}
-function getThreadSubject() {
-  const subjects = getOriginalPost().querySelectorAll('.subject');
-  return subjects[subjects.length - 1];
-}
-function getPostInSeries(series, index) {
-  if (series == 'thumbs' || series === undefined) {
-    const thumbs = getThumbs();
-    index = index || currentContent;
-    return getPostFromElement(thumbs[index])
-  }
-}
-function getThumbs(el) {
-  el = el || threadElement;
-  return [].slice.call(el.querySelectorAll('.fileThumb'));
-}
+
 function getThumb(video) {
   return video.previousSibling;
 }
+
 function getThumbImg(thumb) {
   return thumb.querySelector('img');
 }
+
 function thumbHidden(thumb) {
   if (thumb && thumb.style.display === 'none') {
     return true;
@@ -360,48 +577,21 @@ function thumbHidden(thumb) {
     return getThumbImg(thumb)?.style.display === 'none';
   }
 }
+
 function webmThumbImg(thumbImg) {
   return /.webm$/.test(thumbImg.parentElement.href);
 }
-function getThumbImgs(thumbs, includeHidden) {
-  thumbs = checkT(thumbs);
-  if (includeHidden) {
-    return thumbs.reduce( (imgs, thumb) =>
-     (getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
-  } else {
-    return thumbs.reduce( (imgs, thumb) => (thumb.style.display === ''
-      && getThumbImg(thumb) && imgs.push(getThumbImg(thumb)), imgs), [] );
-  }
-}
-function getExpandedImgs(thumbs) {
-  thumbs = checkT(thumbs);
-  return thumbs.reduce( (acc, thumb) => {
-      var img = thumb.querySelector('.expanded-thumb');
-      if (img) { acc.push(img) } return acc }, []);
-}
-function getVids(el, first) {
-  el = el || threadElement
-  if (first) return el.querySelector('video');
-  return [].slice.call(el.querySelectorAll('video'));
-}
-function getExpandedWebms(thumbs) {
-  thumbs = checkT(thumbs);
-  // Display style seems to be set to none only in expanded video case
-  return thumbs.reduce( (webms, thumb) =>
-      (thumb.style.display === 'none' && webms.push(thumb.nextSibling), webms), [] );
-}
-function getCloseLinks() {
-  return [].slice.call(threadElement.querySelectorAll('a'))
-           .filter( a => a.textContent === 'Close' );
-}
+
 function getCloseLink(video) {
   return [].slice.call(video.parentElement.querySelectorAll('a'))
            .filter( link => link.textContent == "Close" )[0];
 }
+
 function getQuoteLinks(post) {
   return [].slice.call(getPostMessage(post)?.querySelectorAll('.quotelink'))
     .map( tag => parseInt(tag.hash?.slice(2)) );
 }
+
 function getBacklinks(post) {
   var backlinkElement = post.querySelector('.backlink')
   if (backlinkElement) {
@@ -409,31 +599,13 @@ function getBacklinks(post) {
       .map( tag => parseInt(tag.hash.slice(2)) );
   } else { return [] }
 }
+
 function hasAudio(video) {
   return video.mozHasAudio ||
     Boolean(video.webkitAudioDecodedByteCount) ||
     Boolean(video.audioTracks && video.audioTracks.length);
 }
-function getAudioWebms(video) {
-  return getExpandedWebms().filter( webm => hasAudio(webm) );
-}
-function threadMeta(thread) {
-  const data = [].slice.call(thread.querySelector('.meta').querySelectorAll('b'))
-    .map(b => parseInt(b.textContent));
-  return {replies: data[0], imgs: data[1]}
-}
-function contentThread(thread) {
-  const meta = threadMeta(thread);
-  return meta.imgs > 9 && (meta.imgs >= 50 || (meta.imgs / meta.replies) > 0.6)
-}
-function challengeThread(thread) {
-  const ylylMatch = /(y[gl]yl|Y[GL]YL|u lose)/
-  return ylylMatch.test(thread.textContent)
-}
-function externalLinkThread(thread) {
-  const httpMatch = /http/
-  return httpMatch.test(thread.textContent)
-}
+
 function getDataMD5(expandedItem) {
   if (expandedItem.className == "expandedWebm") {
     return getThumb(expandedItem).querySelector("img").getAttribute("data-md5");
@@ -442,22 +614,13 @@ function getDataMD5(expandedItem) {
     return expandedItem.previousSibling.getAttribute("data-md5");
   }
 }
+
 function getElementByDataMD5(dataMD5) {
   return document.querySelector('[data-md5="' + dataMD5 + '"]')
 }
+
 function getElementByDataId(dataId) {
   return document.querySelector('[data-id="' + dataId + '"]')
-}
-function verifyContentFreshness() {
-  getThumbs()
-    .filter( thumb => !thumb.href?.endsWith(".webm")) // test these only on open
-    .map( thumb => {
-      chrome.runtime.sendMessage(extensionID, {
-        action: 'testSHA1',
-        url: thumb.href,
-        dataId: thumb.querySelector("img").getAttribute('data-md5')
-      })
-    });
 }
 
 
@@ -479,9 +642,6 @@ function getFlag(post) {
   if (flag) return flag
 
   return nameBlock.querySelector("[class*='bfl']")?.title
-}
-function getPostsByPosterId(posterId, posts) {
-  return checkP(posts).filter(post => getPosterId(post) == posterId);
 }
 
 
@@ -514,7 +674,7 @@ observeDOM(document.body, function(m) {
       var video = added;
       unmute(video)
       video.volume = local('volume');
-      openedWebms.push(video);
+      thread.openedWebms.push(video);
       if (settingOn('testSHA1')) {
         chrome.runtime.sendMessage(extensionID, {
           action: 'testSHA1',
@@ -529,13 +689,13 @@ observeDOM(document.body, function(m) {
     var removed = record.removedNodes[0];
     if (removed?.className == 'expandedWebm') {
       var video = removed;
-      openedWebms = arrayRemove(openedWebms, video);
+      thread.removeOpenedWebM(video);
     }
   });
 });
 
 window.addEventListener("keydown", function (event) {
-  if (event.defaultPrevented) { return }
+  if (event.defaultPrevented) { return; }
 
   switch (event.key) {
     case " ":
@@ -547,31 +707,46 @@ window.addEventListener("keydown", function (event) {
       }
       break;
     case "ArrowLeft":
-      var currentVideo = last(openedWebms);
+      var currentVideo = last(thread.openedWebms);
       if (event.shiftKey) {
-        if (gifsPage) { closeVideo(currentVideo) }
-        else { exitFullscreen() }}
-      else if (event.altKey) { jump(false) }
+        if (board.isGif) {
+          closeVideo(currentVideo);
+        } else {
+          exitFullscreen();
+        }
+      }
+      else if (event.altKey) {
+        jump(false);
+      }
       else {
-        if (gifsPage) {
+        if (board.isGif) {
           openPreviousVideo(currentVideo);
           if (currentVideo) closeVideo(currentVideo);
-        } else { previousContent() }}
+        } else {
+          previousContent();
+        }
+      }
       break;
     case "ArrowRight":
-      var currentVideo = last(openedWebms);
+      var currentVideo = last(thread.openedWebms);
       if (event.shiftKey) {
-        if (gifsPage) {
+        if (board.isGif) {
           currentVideo.requestFullscreen();
         } else {
           postContent(getPostInSeries()).content.requestFullscreen();
-        }}
-      else if (event.altKey) { jump(true) }
+        }
+      }
+      else if (event.altKey) {
+        jump(true);
+      }
       else {
-        if (gifsPage) {
+        if (board.isGif) {
           openNextVideo(currentVideo);
           if (currentVideo) closeVideo(currentVideo);
-        } else { nextContent() }}
+        } else {
+          nextContent();
+        }
+      }
       break;
     default:
       return; // Quit when this doesn't handle the key event.
@@ -612,25 +787,23 @@ if (threadPage) {
   }
   if (settingOn('runTextTransforms')) transformPostText();
   if (settingOn('testSHA1')) {
-    verifyContentFreshness();
-    setSeenStats();
+    thread.verifyContentFreshness();
+    setContentStats();
   }
 
   // Other boards may have threads that contain videos, but there are usually fewer
-  if (!gifsPage) {
-    if (settingOn('autoExpand')) {
-      loadData(expandImages, function() {
-        expandImages();
-      });
-    }
+  if (!board.isGif) {
+    // if (settingOn('autoExpand')) {
+    //   loadData(expandImages, function() {
+    //     expandImages();
+    //   });
+    // }
 
-    const board = getBoard();
-
-    if (board === "pol") {
+    if (board.name === "pol") {
       loadData(idFlagGraph, function() { reportFlags() });
       loadData(reportNPosts, function() { reportNPosts() });
     }
-    else if (board === "biz") {
+    else if (board.name === "biz") {
       loadData(reportOpPosts, function() { reportOpPosts() });
       loadData(reportNPosts, function() { reportNPosts() });
     }

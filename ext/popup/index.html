@@ -20,6 +20,7 @@
 				Auto Expand
 			</button>
 		</div>
+
 		<div class="btn-group" style="width:100%">
 			<button type="button" class="digits" style="width:50%">
 				Digits
@@ -28,6 +29,7 @@
 				MaxDigits
 			</button>
 		</div>
+
 		<div class="btn-group" style="width:100%">
 			<button type="button" class="threadGraph" style="width:25%">
 				Thread<br>Graph
@@ -42,6 +44,7 @@
 				Test SHA1s
 			</button>
 		</div>
+
 		<div class="btn-group" style="width:100%">
 			<button type="button" class="fullScreen" style="width:33.33%">
 				Full Screen
@@ -54,12 +57,6 @@
 			</button>
 		</div>
 
-	  <p>Set Thread Filter (regex):</p>
-    <textarea placeholder="YLYL" class="threadFilter" id="threadFilter" rows=4 cols="50"></textarea>	
-
-	  <p>Set Post Text Transforms:</p>
-    <textarea placeholder="regex1==replacement1&#10;regex2==replacement2" class="textTransforms" id="textTransforms" rows=4 cols="50"></textarea>	
-
 		<br>
 
 		<div>
@@ -69,9 +66,19 @@
 			</div>
 		</div>
 
+		<br>
+
+	  <p>Set Thread Filter (regex):</p>
+    <textarea placeholder="YLYL" class="threadFilter" id="threadFilter" rows=4 cols="50"></textarea>
+
+	  <p>Set Post Text Transforms:</p>
+    <textarea placeholder="regex1==replacement1&#10;regex2==replacement2" class="textTransforms" id="textTransforms" rows=4 cols="50"></textarea>
+
+	  <p>Edit Content Filter (SHA1):</p>
+    <textarea placeholder="" class="contentFilter" id="contentFilter" rows=4 cols="50"></textarea>
+
+
 	</body>
 </html>
 
 <script type='text/javascript' src="popup.js"></script>
-
-

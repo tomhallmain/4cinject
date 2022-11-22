@@ -2,7 +2,7 @@
 // REPORTING /////////
 
 function threadGraph(posts, includeNoRef) {
-  posts = checkP(posts)
+  posts = thread.checkP(posts)
   var graph = {}
   posts.map( post => {
     var pBacklinks = getBacklinks(post)
@@ -16,17 +16,17 @@ function threadGraph(posts, includeNoRef) {
 function subthreads() {
   const graph = threadGraph(null, false)
   var postIds = Object.keys(graph)
-  opId = getPostId(getOriginalPost())
+  opId = getPostId(thread.getOriginalPost())
   var counts = {}
   for (var postId of postIds) {
     if (postId == opId) continue;
-    var post = getPostById(postId)
+    var post = thread.getPostById(postId)
     var [pLinks, pBacklinks] = graph[postId]
     for (var blPostId of pBacklinks) {
       if (blPostId == opId) {
         continue;
       }
-      var blPost = getPostById(blPostId)
+      var blPost = thread.getPostById(blPostId)
       var count = counts[blPostId]
       if (count) {
         var blPostCopy = blPost.cloneNode()
@@ -48,7 +48,7 @@ function subthreads() {
 }
 
 function numbersGraph() {
-  var postIds = getPostIds()
+  var postIds = thread.getPostIds()
   var graph = {}
   const postLength = postIds[0].length // Assuming all posts IDs will have same length
   postIds.map( postId => {
@@ -86,7 +86,7 @@ function reportDigits() {
   const digits = maxDigits()
   var digitsReporter = document.createElement('div')
   digitsReporter.className = 'digits desktop'
-  
+
   if (typeof(digits) == 'string') {
     digitsReporter.textContent = digits
   }
@@ -106,7 +106,7 @@ function reportDigits() {
 }
 
 function getFlagsForPosters(posterId, posts) {
-  posts = checkP(posts)
+  posts = thread.checkP(posts)
   var uniqueFlags = {}
   var posterFlags = {}
 
@@ -114,24 +114,24 @@ function getFlagsForPosters(posterId, posts) {
     post = posts[i]
     posterId = getPosterId(post)
     const thisFlag = getFlag(post)
-    
+
     if (posterId == null || thisFlag == null) {
       continue
     }
-    
+
     flags = posterFlags[posterId] || {}
-    
+
     if (flags[thisFlag]) {
       flags[thisFlag] += 1
     }
     else {
       flags[thisFlag] = 1
     }
-    
+
     if (!uniqueFlags[thisFlag]) {
       uniqueFlags[thisFlag] = []
     }
-    
+
     uniqueFlags[thisFlag].push(posterId)
     posterFlags[posterId] = flags
   }
@@ -140,7 +140,7 @@ function getFlagsForPosters(posterId, posts) {
 }
 
 function idFlagGraph(posts) {
-  posts = checkP(posts)
+  posts = thread.checkP(posts)
   var flagsData = getFlagsForPosters(null, posts)
 
   var uniqueFlags = flagsData[0]
@@ -150,9 +150,9 @@ function idFlagGraph(posts) {
   items.sort(function(first, second) {
     return Object.keys(second[1]).length - Object.keys(first[1]).length
   })
-  
+
   var uniqueFlagsSorted = {}
-  
+
   for (var item of items) {
     uniqueFlagsSorted[item[0]] = item[1]
   }
@@ -173,14 +173,14 @@ function idFlagGraph(posts) {
       (sum + value, sum), 0)
     return totalPosts2 - totalPosts1
   })
-  
+
   var posterDetailsSorted = {}
   var flagSwitchers = []
 
   for (var item of items) {
     const posterId = item[0]
     const flags = item[1]
-    const firstPost = getPostsByPosterId(posterId, posts)[0]
+    const firstPost = thread.getPostsByPosterId(posterId, posts)[0]
     const postId = getPostId(firstPost)
     const details = { flags: flags, postId: postId, id: posterId }
     if (flags && Object.keys(flags)?.length > 1) {
@@ -194,12 +194,12 @@ function idFlagGraph(posts) {
 
 function makeOpDetailsElement(nAllPosts) {
   var opDetails = document.createElement('h3')
-  const nOpPosts = getPostsByPosterId(getPosterId(getOriginalPost())).length
+  const nOpPosts = thread.getPostsByOP().length
 
   if (!nAllPosts) {
-    nAllPosts = getPosts().length
+    nAllPosts = thread.getPosts().length
   }
-  
+
   if (nOpPosts == 1 && nAllPosts > 10) {
     opDetails.textContent = 'Posts by OP: ' + nOpPosts + ' (BOT THREAD)'
     opDetails.style.color = 'red'
@@ -225,7 +225,7 @@ function reportFlags() {
   const flagPosters = idFlags[0]
   const posterDetails = idFlags[1]
   const flagSwitchers = idFlags[2]
-  
+
   const uniqueFlagsString = Object.keys(flagPosters)
       .map(key => key + " (" + flagPosters[key].length + ")")
       .join(", ")
@@ -271,7 +271,7 @@ function reportFlags() {
     var flagDiv = document.createElement('div')
     flagDiv.textContent = flag + ': '
     div.appendChild(flagDiv)
-    
+
     for (var posterId of flagPosters[flag]) {
       const details = posterDetails[posterId]
       var link = document.createElement('a')
@@ -297,11 +297,11 @@ function reportOpPosts() {
 
 function reportNPosts() {
   var ids = {}
-  
-  for (post of getPosts()) {
+
+  for (post of thread.getPosts()) {
     const posterId = getPosterId(post);
     if (!posterId) continue;
-    
+
     if (posterId in ids) {
       ids[posterId]++;
     }
@@ -310,7 +310,7 @@ function reportNPosts() {
     }
   }
 
-  for (post of getPosts()) {
+  for (post of thread.getPosts()) {
     const infoDesktop = post?.querySelector('.postInfo.desktop');
     if (!infoDesktop) continue;
     const idEl = infoDesktop.querySelector('[class*="posteruid"]');
@@ -332,14 +332,10 @@ function reportNPosts() {
   }
 }
 
-function setSeenStats() {
-  if (numContentItems == 0) {
-    return;
-  }
+function setContentStats() {
+  const proportionSeen = thread.getProportionSeenContent();
 
-  const proportionSeen = numSeenContentItems / numContentItems;
-
-  if (proportionSeen == 0) {
+  if (proportionSeen <= 0) {
     return;
   }
 
@@ -371,9 +367,9 @@ function contentExtract() {
   openAll();
   var imageContent = getExpandedImgs();
   var vids = getVids();
-  threadElement.innerHTML = '';
-  imageContent.map( img => threadElement.append(img) );
-  vids.map( vid => threadElement.append(vid) );
+  thread.element.innerHTML = '';
+  imageContent.map( img => thread.element.append(img) );
+  vids.map( vid => thread.element.append(vid) );
   const graphRedrawn = true
 }
 
@@ -381,18 +377,17 @@ function postDiffHighlight() {
   chrome.runtime.sendMessage(extensionID, {
     action: 'findNewPostIDsForThread',
     url: initialLink,
-    postIds: getPostIds()
+    postIds: thread.getPostIds()
   })
 }
 
 function highlightNewPosts(_newPostIds) {
-  newPostIds = _newPostIds || []
-  if (newPostIds && newPostIds.length > 0) {
-    for (postId of newPostIds) {
-      post = getPostById(postId)
-      post.style.backgroundColor = '#3f4b63'
+  thread.newPostIds = _newPostIds || [];
+  if (thread.newPostIds && thread.newPostIds.length > 0) {
+    for (postId of thread.newPostIds) {
+      post = thread.getPostById(postId);
+      post.style.backgroundColor = '#3f4b63';
     }
-    console.log("New posts found: " + newPostIds)
   }
 }
 

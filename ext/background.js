@@ -13,6 +13,9 @@ var sha1sList = []
 var knownSha1sThreadsMap = {}
 var sha1ThreadIdsMap = {}
 var botThreadSha1s = []
+var filteredSha1s = []
+var filteredIDs = []
+var filteredFlags = []
 var modifyingSha1sMap = false
 var modifyingSha1sThreadsMap = false
 var modifyingKnownPostIdsMap = false
@@ -36,44 +39,6 @@ function loadScript(fileName) {
 files = ['helpers.js']
 files.map( file => loadScript(file) );
 
-function roughSizeOfObject( object ) {
-    var objectList = [];
-    var stack = [ object ];
-    var bytes = 0;
-
-    while ( stack.length ) {
-        var value = stack.pop();
-
-        if ( typeof value === 'boolean' ) {
-            bytes += 4;
-        }
-        else if ( typeof value === 'string' ) {
-            bytes += value.length * 2;
-        }
-        else if ( typeof value === 'number' ) {
-            bytes += 8;
-        }
-        else if
-        (
-            typeof value === 'object'
-            && objectList.indexOf( value ) === -1
-        )
-        {
-            objectList.push( value );
-
-            for( var i in value ) {
-                stack.push( value[ i ] );
-            }
-        }
-    }
-    return bytes;
-}
-
-function isEmpty(ob){
-    for(var i in ob){ if(ob.hasOwnProperty(i)){return false;}}
-    return true;
-}
-
 function clearSha1sMap() {
   if (isEmpty(knownSha1sMap)) {
     return;
@@ -88,10 +53,55 @@ function clearSha1sMap() {
   }
 }
 
+function clearSha1sThreadsMap() {
+  if (isEmpty(knownSha1sThreadsMap)) {
+    return;
+  }
+  else if (modifyingSha1sThreadsMap) {
+    setTimeout(clearSha1sThreadsMap, 40000)
+    console.log('Set timeout to clear knownSha1sThreadsMap')
+  }
+  else {
+    knownSha1sThreadsMap = {}
+    console.log('Cleared knownSha1sThreadsMap')
+  }
+}
+
+function clearShaThreadIdsMap() {
+  if (isEmpty(sha1ThreadIdsMap)) {
+    return;
+  }
+  else if (modifyingSha1sThreadsMap) {
+    setTimeout(clearShaThreadIdsMap, 40000)
+    console.log('Set timeout to clear sha1ThreadIdsMap')
+  }
+  else {
+    sha1ThreadIdsMap = {}
+    console.log('Cleared sha1ThreadIdsMap')
+  }
+}
+
+function clearThreadKnownPostIdsMap() {
+  if (isEmpty(threadKnownPostIdsMap)) {
+    return;
+  }
+  else if (modifyingKnownPostIdsMap) {
+    setTimeout(clearThreadKnownPostIdsMap, 40000)
+    console.log('Set timeout to clear threadKnownPostIdsMap')
+  }
+  else {
+    threadKnownPostIdsMap = {}
+    console.log('Cleared threadKnownPostIdsMap')
+  }
+}
+
+
+// Services
+
 async function testIsSeenSha1(url) {
   modifyingSha1sMap = true
 
-  if (roughSizeOfObject(knownSha1sMap) > 100000) {
+  if (roughSizeOfObject(knownSha1sMap) > 150000) {
     clearSha1sMap()
   }
 
@@ -132,28 +142,13 @@ async function testIsSeenSha1(url) {
   }
 }
 
-function clearThreadKnownPostIdsMap() {
-  if (isEmpty(threadKnownPostIdsMap)) {
-    return;
-  }
-  else if (modifyingKnownPostIdsMap) {
-    setTimeout(clearThreadKnownPostIdsMap, 40000)
-    console.log('Set timeout to clear threadKnownPostIdsMap')
-  }
-  else {
-    threadKnownPostIdsMap = {}
-    console.log('Cleared threadKnownPostIdsMap')
-  }
-}
-
-
 function findNewPostIDsForThread(threadURL, postIds) {
   modifyingKnownPostIdsMap = true
 
-  if (roughSizeOfObject(threadKnownPostIdsMap) > 100000) {
+  if (roughSizeOfObject(threadKnownPostIdsMap) > 150000) {
     clearThreadKnownPostIdsMap()
   }
-  
+
   const knownPostIds = threadKnownPostIdsMap[threadURL]
   if (!knownPostIds || knownPostIds.length === 0) {
     threadKnownPostIdsMap[threadURL] = postIds
@@ -169,43 +164,14 @@ function findNewPostIDsForThread(threadURL, postIds) {
 }
 
 
-function clearSha1sThreadsMap() {
-  if (isEmpty(knownSha1sThreadsMap)) {
-    return;
-  }
-  else if (modifyingSha1sThreadsMap) {
-    setTimeout(clearSha1sThreadsMap, 40000)
-    console.log('Set timeout to clear knownSha1sThreadsMap')
-  }
-  else {
-    knownSha1sThreadsMap = {}
-    console.log('Cleared knownSha1sThreadsMap')
-  }
-}
-
-function clearShaThreadIdsMap() {
-  if (isEmpty(sha1ThreadIdsMap)) {
-    return;
-  }
-  else if (modifyingSha1sThreadsMap) {
-    setTimeout(clearShaThreadIdsMap, 40000)
-    console.log('Set timeout to clear sha1ThreadIdsMap')
-  }
-  else {
-    sha1ThreadIdsMap = {}
-    console.log('Cleared sha1ThreadIdsMap')
-  }
-}
-
-
 async function testIsSeenTwiceSha1Thread(url, threadId) {
   modifyingSha1sThreadsMap = true
 
-  if (roughSizeOfObject(knownSha1sThreadsMap) > 100000) {
+  if (roughSizeOfObject(knownSha1sThreadsMap) > 150000) {
     clearSha1sThreadsMap()
   }
 
-  if (roughSizeOfObject(sha1ThreadIdsMap) > 100000) {
+  if (roughSizeOfObject(sha1ThreadIdsMap) > 150000) {
     clearShaThreadIdsMap()
   }
 
@@ -233,7 +199,7 @@ async function testIsSeenTwiceSha1Thread(url, threadId) {
   }
   else if (sha1 in sha1ThreadIdsMap) {
     modifyingSha1sThreadsMap = false
-    
+
     if (sha1ThreadIdsMap[sha1] === threadId) {
       return 0
     }
@@ -249,21 +215,57 @@ async function testIsSeenTwiceSha1Thread(url, threadId) {
   }
 }
 
+
+// Messaging
+
 function sendMessage(message, tabId) {
   chrome.tabs.query({}, function(tabs){
     chrome.tabs.sendMessage(tabId, message);
   });
 }
 
+
+// Awaits messages from popup
+
+chrome.runtime.onMessage.addListener(
+  function(request,sender,sendResponse) {
+    if (request.action == "updateContentFilter") {
+
+      updateContentFilter(request);
+
+    }
+    else if (request.action == "getContentFilter") {
+
+      sendResponse({
+        action: 'contentFilter',
+        data: filteredSha1s
+      });
+
+    }
+  });
+
+
 // Awaits messages from in-page scripts
+
 chrome.runtime.onMessageExternal.addListener(
   function(request, sender, sendResponse) {
+
     //if (sender.url === blocklistedWebsite)
     //  return;  // don't allow this web page access
-    console.log(request)
+
+    console.log(request);
+
     if (request.action == "testSHA1" && request.url) {
+
       testIsSeenSha1(request.url).then((seenType) => {
-        if (seenType == 1) {
+        if (seenType == 0) {
+          sendMessage({
+            action: 'handleUnseenContent',
+            url: request.url,
+            dataId: request.dataId
+          }, sender.tab.id);
+        }
+        else if (seenType == 1) {
           sendMessage({
             action: 'setIsSeenContent',
             url: request.url,
@@ -278,8 +280,10 @@ chrome.runtime.onMessageExternal.addListener(
           }, sender.tab.id);
         }
       });
+
     }
     else if (request.action == "findNewPostIDsForThread" && request.url) {
+
       newPostIds = findNewPostIDsForThread(request.url, request.postIds)
 
       if (newPostIds.length > 0) {
@@ -293,8 +297,10 @@ chrome.runtime.onMessageExternal.addListener(
       else {
         console.log("Initial thread save or no new post IDs found.")
       }
+
     }
     else if (request.action == "testSHA1ForThreadImage" && request.url) {
+
       testIsSeenTwiceSha1Thread(request.url, request.threadId).then((seenType) => {
         if (seenType == 1) {
           sendMessage({
@@ -304,7 +310,19 @@ chrome.runtime.onMessageExternal.addListener(
           }, sender.tab.id);
         }
       });
+
+    }
+    else if (request.action == "updateContentFilter") {
+
+      updateContentFilter(request);
+
+    }
+    else if (request.action == "getContentFilter") {
+
+      sendMessage({
+        action: 'contentFilter',
+        data: filteredSha1s
+      }, sender.tab.id);
+
     }
   });
-
-

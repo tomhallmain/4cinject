@@ -41,8 +41,8 @@ function getArrayString(array) {
 }
 
 function messageIn(message) {
-  console.log('Content script received message: ');
-  console.log(message);
+//  console.log('Content script received message: ');
+//  console.log(message);
   event = (function(message) {
     const filterSettings = message.filterSettings;
     switch (message.action) {
@@ -58,33 +58,39 @@ function messageIn(message) {
       case 'catalogFilter':  return 'toggleFilter()';
       case 'toggleTestSHA1': return 'toggleTestSHA1()';
       case 'highlightNew':   return 'togglePostDiffHighlight()';
-      
-      case 'setVolume': 
+
+      case 'setVolume':
         return 'setVolume(' + (filterSettings['volume'] || 50)/100 + ')';
-      
-      case 'getVolume': 
+
+      case 'getVolume':
         messageOut('volume', window.localStorage['volume']);
         break;
-      
+
       case 'setThreadFilter':
         var pattern = filterSettings['threadFilter'].replaceAll("\\", "\\\\").replaceAll('"', '\\"')
         return 'setThreadFilter("' + pattern + '")';
-      
-      case 'getThreadFilter': 
+
+      case 'getThreadFilter':
         messageOut('threadFilter', window.localStorage['threadFilter']);
         break;
-      
+
       case 'setTextTransforms':
         var pattern = filterSettings['textTransforms'].replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n")
         return 'setTextTransforms("' + pattern + '")';
-      
-      case 'getTextTransforms': 
+
+      case 'getTextTransforms':
         messageOut('textTransforms', window.localStorage['textTransforms']);
         break;
-      
+
+      case 'handleUnseenContent':
+        return 'handleUnseenContent("' + message.dataId + '")';
+
+      case 'handleFilteredContent':
+        return 'handleFilteredContent("' + message.dataId + '")';
+
       case 'setIsSeenContent':
         return 'setIsSeenContent("' + message.dataId + '", true)';
-      
+
       case 'setIsSeenContentNotStored':
         return 'setIsSeenContent("' + message.dataId + '", false)';
 
@@ -93,12 +99,12 @@ function messageIn(message) {
 
       case 'setIsBotThread':
         return 'setIsBotThread("' + message.dataId + '")'
-      
+
       default: console.log('Message not understood');
     };
   })(message);
   if (event) {
-    console.log(event);
+//    console.log(event);
     fireEvent(event);
   }
 };
@@ -111,8 +117,7 @@ function fireEvent(toFire) {
 
 function messageOut(message, data) {
   chrome.runtime.sendMessage({
-    msg: message, 
+    msg: message,
     data: data
   });
 };
-
