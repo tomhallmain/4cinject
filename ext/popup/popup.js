@@ -8,10 +8,24 @@ function mapBtn(btn, action) {
   btn.addEventListener('click', function() { buttonPressed(action) });
 }
 
-function mapInput(input, action) {
+function mapInput(input, action, isBackground) {
   input.addEventListener('change', function() {
-    updateFilter(input.className, input.value);
-    sendMessageWithAction(action);
+    var data = input.value;
+
+    if (input.className === 'contentFilter') {
+      data = data.split("\n+ *\n+");
+      if (data.length === 1 && data[0] === '') {
+        data = [];
+      }
+    }
+
+    updateFilter(input.className, data);
+
+    if (isBackground) {
+      sendMessageToBackgroundWithAction(action);
+    } else {
+      sendMessageWithAction(action);
+    }
   });
 }
 
@@ -42,10 +56,17 @@ let activeTabParams = {
 }
 
 function sendMessageToBackgroundPage(message) {
-  return chrome.runtime.sendMessage(message,
+  message = applyFilter(message);
+  chrome.runtime.sendMessage(message,
     function (response) {
+      console.log("Received response from background: ");
       console.log(response);
-      return response;
+
+      if (response.action === 'contentFilter') {
+        if (response.data !== undefined) {
+          select('.contentFilter').innerHTML = response.data.join('\n');
+        }
+      }
     });
 }
 
@@ -68,7 +89,7 @@ function applyFilter(msg) {
 }
 
 function sendMessageWithAction(action) {
-  sendMessageToActiveTab({action: action});
+  return sendMessageToActiveTab({action: action});
 }
 
 
@@ -102,13 +123,13 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn(    select('.threadGraph'),    'threadGraph'     );
   mapBtn(    select('.subthreads'),     'subthreads'      );
   mapBtn(    select('.contentExtract'), 'contentExtract'  );
-  mapBtn(    select('.toggleTestSHA1'), 'toggleTestSHA1'  );
+  mapBtn(    select('.toggleTestHash'), 'toggleTestHash'  );
   mapBtn(    select('.fullScreen'),     'fullScreen'      );
   mapBtn(    select('.highlightNew'),   'highlightNew'    );
   mapBtn(    select('.catalogFilter'),  'catalogFilter'   );
   mapInput(  select('.threadFilter'),   'setThreadFilter' );
   mapInput(  select('.textTransforms'), 'setTextTransforms' );
-  mapInput(  select('.contentFilter'),  'setContentFilter'  );
+  mapInput(  select('.contentFilter'),  'setContentFilter', true  );
   mapSlider( select('#volume'),         'setVolume'       );
 });
 
@@ -118,10 +139,6 @@ chrome.runtime.onMessage.addListener(
     switch (request.msg) {
       case ('volume'):
         select('#volume').value = request.data * 100
-        break;
-      case ('contentFilter'):
-        if (request.data === undefined) return;
-        select('.contentFilter').innerHTML = request.data.join('\n');
         break;
       case ('threadFilter'):
         if (request.data === undefined || request.data === '') return;

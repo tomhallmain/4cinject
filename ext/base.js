@@ -4,13 +4,14 @@
 class Board {
   name;
   isWorkSafe;
+  // Other boards may have threads that contain videos, but there are usually fewer
   isGif;
 
   constructor(url) {
     const route = url.replaceAll(/.+4chan(nel)?.org\//g, "")
     this.name = route.substring(0, route.indexOf("/"))
     this.isWorkSafe = url.includes('4channel.org');
-    this.isGif = this.name === 'gif';
+    this.isGif = this.name === 'gif' || this.name === 'wsg';
   }
 }
 
@@ -98,6 +99,18 @@ class Thread4C {
   }
 
   getCurrentContent(thumbs) {
+    if (board.isGif) {
+      const currentPost = getPostFromElement(last(thread.openedWebms));
+      if (currentPost) {
+        const thumb = currentPost.querySelector('.fileThumb');
+        this.currentContent = this.getThumbs().indexOf(thumb);
+        console.log("Set current content to " + this.currentContent);
+      } else {
+        console.log("No current post found.");
+        console.log(thread.openedWebms);
+      }
+    }
+
     return this.checkT(thumbs)[this.currentContent];
   }
 
@@ -210,7 +223,7 @@ class Thread4C {
   }
 
   hasChallenge() {
-    const pattern = /(y[a-z]{2}yl|Y[A-Z]{2}YL|u lose)/;
+    const pattern = /(y[a-z]yl|Y[A-Z]YL|u lose)/;
     return pattern.test(this.element.textContent);
   }
 
@@ -220,15 +233,15 @@ class Thread4C {
   }
 
   verifyContentFreshness() {
-    this.getThumbs()
-      .filter( thumb => !thumb.href?.endsWith(".webm")) // test these only on open
-      .map( thumb => {
-        chrome.runtime.sendMessage(extensionID, {
-          action: 'testSHA1',
-          url: thumb.href,
-          dataId: thumb.querySelector("img").getAttribute('data-md5')
-        })
+    const thumbs = this.getThumbs();
+    for (var i = 0; i < thumbs.length; i++) {
+      const thumb = thumbs[i];
+      const link = thumb.href;
+      const dataMD5 = thumb.querySelector("img").getAttribute('data-md5');
+      chrome.runtime.sendMessage(extensionID, {
+        action: 'testMD5', url: link, dataId: dataMD5
       });
+    }
   }
 
   getProportionSeenContent() {
@@ -322,20 +335,20 @@ function toggleSubthreads() {
   }
 }
 
-function toggleTestSHA1() {
-  const isOn = settingOn('testSHA1');
-  local('testSHA1', !isOn);
+function toggleTestHash() {
+  const wasOn = settingOn('testHash');
+  local('testHash', !wasOn);
   if (!threadPage) return;
-  if (!isOn) {
+  if (!wasOn) {
     verifyContentFreshness();
   }
 }
 
 function toggleAutoExpand() {
-  const isOn = settingOn('autoExpand');
-  local('autoExpand', !isOn);
+  const wasOn = settingOn('autoExpand');
+  local('autoExpand', !wasOn);
   if (!threadPage) return;
-  if (!isOn) {
+  if (!wasOn) {
     openImgs();
   } else {
     close();
@@ -343,10 +356,10 @@ function toggleAutoExpand() {
 }
 
 function toggleFilter() {
-  const isOn = settingOn('catalogFilter');
-  local('catalogFilter', !isOn);
+  const wasOn = settingOn('catalogFilter');
+  local('catalogFilter', !wasOn);
   if (!catalogPage) return;
-  if (!isOn) {
+  if (!wasOn) {
     catalogFilter();
   } else {
     window.location.reload();
@@ -488,7 +501,7 @@ setDefault('autoExpand', 'false');
 setDefault('fullscreen', 'false');
 setDefault('subthreads', 'true');
 setDefault('catalogFilter', 'true');
-setDefault('testSHA1', 'true');
+setDefault('testHash', 'true');
 setDefault('postDiffHighlight', 'true');
 
 if (!local('volume')) setVolume(0.5); // Set initial volume to 50%
@@ -500,7 +513,7 @@ if (boardBasePage || catalogPage) {
 if (catalogPage) {
   if (settingOn('catalogFilter')) catalogFilter();
   if (settingOn('runTextTransforms')) transformTeaserTexts();
-  if (settingOn('testSHA1')) checkForBotAndShillThreads();
+  if (settingOn('testHash')) checkForBotAndShillThreads();
 }
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
@@ -675,13 +688,13 @@ observeDOM(document.body, function(m) {
       unmute(video)
       video.volume = local('volume');
       thread.openedWebms.push(video);
-      if (settingOn('testSHA1')) {
-        chrome.runtime.sendMessage(extensionID, {
-          action: 'testSHA1',
-          url: added.src,
-          dataId: getDataMD5(video)
-        });
-      }
+      // if (settingOn('testHash')) {
+      //   chrome.runtime.sendMessage(extensionID, {
+      //     action: 'testHash',
+      //     url: added.src,
+      //     dataId: getDataMD5(video)
+      //   });
+      // }
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     }
@@ -765,8 +778,14 @@ function sleepAsync(ms) {
 }
 
 async function loadData(func, callback) {
+  var count = 0;
   while(typeof func !== "function") {
+    count++;
     await sleepAsync(200);
+
+    if (count > 10) {
+      break;
+    }
   }
   callback();
 }
@@ -786,27 +805,18 @@ if (threadPage) {
     });
   }
   if (settingOn('runTextTransforms')) transformPostText();
-  if (settingOn('testSHA1')) {
+  if (settingOn('testHash')) {
     thread.verifyContentFreshness();
     setContentStats();
   }
 
-  // Other boards may have threads that contain videos, but there are usually fewer
-  if (!board.isGif) {
-    // if (settingOn('autoExpand')) {
-    //   loadData(expandImages, function() {
-    //     expandImages();
-    //   });
-    // }
-
-    if (board.name === "pol") {
-      loadData(idFlagGraph, function() { reportFlags() });
-      loadData(reportNPosts, function() { reportNPosts() });
-    }
-    else if (board.name === "biz") {
-      loadData(reportOpPosts, function() { reportOpPosts() });
-      loadData(reportNPosts, function() { reportNPosts() });
-    }
+  if (board.name === "pol") {
+    loadData(idFlagGraph, function() { reportFlags() });
+    loadData(reportNPosts, function() { reportNPosts() });
+  }
+  else if (board.name === "biz") {
+    loadData(reportOpPosts, function() { reportOpPosts() });
+    loadData(reportNPosts, function() { reportNPosts() });
   }
 }
 

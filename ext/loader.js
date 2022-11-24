@@ -56,7 +56,7 @@ function messageIn(message) {
       case 'contentExtract': return 'contentExtract()';
       case 'fullScreen':     return 'toggleFullscreen()';
       case 'catalogFilter':  return 'toggleFilter()';
-      case 'toggleTestSHA1': return 'toggleTestSHA1()';
+      case 'toggleTestHash': return 'toggleTestHash()';
       case 'highlightNew':   return 'togglePostDiffHighlight()';
 
       case 'setVolume':
@@ -89,10 +89,10 @@ function messageIn(message) {
         return 'handleFilteredContent("' + message.dataId + '")';
 
       case 'setIsSeenContent':
-        return 'setIsSeenContent("' + message.dataId + '", true)';
+        return 'setIsSeenContent("' + message.dataId + '",true)';
 
       case 'setIsSeenContentNotStored':
-        return 'setIsSeenContent("' + message.dataId + '", false)';
+        return 'setIsSeenContent("' + message.dataId + '",false)';
 
       case 'setNewPostStyle':
         return 'highlightNewPosts(' + getArrayString(message.postIds) + ')';

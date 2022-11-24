@@ -172,7 +172,7 @@ function jump(forward) {
       var thumb = first(thread.getThumbs(postContainer(jumpBase)));
       if (thumb) {
         jumpPost = getPostFromElement(thumb);
-        currentContent = thread.getThumbs().indexOf(thumb);
+        thread.currentContent = thread.getThumbs().indexOf(thumb);
         searching = false
       } else { base = jumpBase }
     } else { searching = false }
@@ -196,16 +196,40 @@ function exitFullscreen() {
   }
 }
 
-function addFilterContentLink(thumbImg) {
+function addFilterHash(thumbImg, md5) {
+  chrome.runtime.sendMessage(extensionID, {
+    action: 'updateContentFilter',
+    md5: md5
+  });
+  var post = getPostFromElement(thumbImg);
+  post.remove();
+}
+
+function addFilterContentLink(thumbImg, dataMD5) {
+  if (!dataMD5) {
+    return;
+  }
+
   const fileText = thumbImg?.parentElement?.previousSibling;
 
   if (!fileText) {
     return;
   }
 
+  const isLinkPresent = fileText.querySelector('#filter-link');
+
+  if (isLinkPresent) {
+    console.log(isLinkPresent);
+    console.log("Unable to add filter link: fileText element not present or link already added.");
+    return;
+  }
+
   var link = document.createElement('a');
-  link.textContent = "Filter";
-//  link.onclick =
+  link.textContent = " Filter";
+  link.onclick = function(e) {
+    addFilterHash(thumbImg, dataMD5);
+  };
+  link.id = 'filter-link';
   fileText.appendChild(link);
 }
 
@@ -219,7 +243,7 @@ function handleUnseenContent(dataMD5) {
     }
   }
 
-  addFilterContentLink(thumbImg);
+  addFilterContentLink(thumbImg, dataMD5);
 }
 
 function handleFilteredContent(dataMD5) {
@@ -247,7 +271,7 @@ function setIsSeenContent(dataMD5, isMatchStored) {
     stalePost.style.borderColor = 'orange';
   }
 
-  addFilterContentLink(thumbImg);
+  addFilterContentLink(thumbImg, dataMD5);
   setContentStats();
 }
 

@@ -23,16 +23,16 @@ After installation, find the icon popup in the top right corner of the browser. 
 
 ### Settings
 
-| Setting        | Default  | Description                                                                                        | 
+| Setting        | Default  | Description                                                                                        |
 |----------------|----------|----------------------------------------------------------------------------------------------------|
 | ThreadFilter   | unset    | Filter out threads in catalog by regex pattern                                                     |
 | TextTransforms | unset    | Replace all text in thread teasers and posts if matching regex pattern                             |
 | Volume         | 50%      | Initial volume level relative to system for all opened WebMs with audio                            |
 | Subthreads     | true     | On thread load, redraw the thread posts into a parent-child form                                   |
 | CatalogFilter  | true     | On catalog load applies ThreadFilter, highlights posts with high content ratio and challenge posts |
-| HighlightNew   | true     | Highight posts created since last thread load                                                      |
+| HighlightNew   | true     | Highlight posts created since last thread load                                                     |
 | MaxDigits      | true     | On thread load, show and make links to max digits among thread posts                               |
-| TestSHA1s      | false    | Test content SHA1s and highlight post if content is found in saved list                            |
+| TestHash       | true     | Test content hashes and highlight or filter posts based on the results                             |
 | Fullscreen     | false    | When engaging content via arrow keys, will set each image/WebM to full screen                      |
 | Auto Expand    | false    | On thread load, automatically expand all images, including gifs                                    |
 | Expand         | n/a      | Expand all images on threads on click                                                              |
@@ -44,17 +44,15 @@ After installation, find the icon popup in the top right corner of the browser. 
 
 Because much of the content on the site is often recycled, it may be desirable to set a list of files you already have saved to avoid duplicate downloads.
 
-To do this, create a file *ext/sha1s.json* as a JSON array containing the string of the SHA1s of your existing files to be marked as already seen. For example:
+To do this, create a file *ext/md5s.json* as a JSON array containing base 64 encodings of binary md5 hashes of your existing files to be marked as already seen. For example:
 
 ```json
 [
-  "ee3283ac79b562d7ddb73b3eb7aae9f35ba6a9c3",
-  "53df56d39c6080abfc8a4ed67ab9cf4843798c99"
+  "f7oN1WfuSYjwtGao7bDK5Q==",
+  "2pyVwevIJV9BS7VWpvuVtw=="
 ]
 ```
 
 Be sure to reload the extension in the browser extensions page after adding this file, and reload any previously loaded pages after.
 
-If setting TestSHA1s is turned on, SHA1s from each file on any thread will be tested against the list of SHA1s provided upon thread load. If a match is found, a red border is applied to the associated post.
-
-
+If setting TestHash is turned on, MD5s from each file on any thread will be tested against the list of hashes provided upon thread load. If a match is found, a red border is applied to the associated post. Recently seen content will have an orange border applied, and a filter can be set on any content.

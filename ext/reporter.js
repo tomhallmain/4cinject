@@ -378,7 +378,7 @@ function postDiffHighlight() {
     action: 'findNewPostIDsForThread',
     url: initialLink,
     postIds: thread.getPostIds()
-  })
+  });
 }
 
 function highlightNewPosts(_newPostIds) {
