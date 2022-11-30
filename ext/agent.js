@@ -139,7 +139,7 @@ function nextNewPost() {
 }
 
 function nextContent(thumbs) {
-  thumbs = checkT(thumbs);
+  thumbs = thread.checkT(thumbs);
   if (thumbs && (thread.currentContent + 1) < thumbs.length) {
     thread.currentContent++
     const thumb = thumbs[thread.currentContent];
@@ -151,7 +151,7 @@ function nextContent(thumbs) {
 }
 
 function previousContent(thumbs) {
-  thumbs = checkT(thumbs);
+  thumbs = thread.checkT(thumbs);
   if (thumbs && (thread.currentContent - 1) >= 0) {
     thread.currentContent--
     const thumb = thumbs[thread.currentContent];

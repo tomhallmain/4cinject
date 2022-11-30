@@ -175,6 +175,20 @@ async function getSHA1(url) {
   return hashHex;
 }
 
+function hexToBase64(str) {
+  return btoa(String.fromCharCode.apply(null,
+    str.replace(/\r|\n/g, "").replace(/([\da-fA-F]{2}) ?/g, "0x$1 ").replace(/ +$/, "").split(" "))
+  );
+}
+
+async function getEncodedMD5(url) {
+  let blob = await fetch(url).then(res => res.blob());
+  let data = await blob.arrayBuffer();
+  let hash = SparkMD5.ArrayBuffer.hash(data, false);
+  let hashBase64 = hexToBase64(hash);
+  return hashBase64;
+}
+
 var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
 var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
 
