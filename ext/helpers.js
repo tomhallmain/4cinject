@@ -113,6 +113,25 @@ function insertAfter(referenceNode, newNode) {
   referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
+// Function to download data to a file
+function saveDataToDownloadedFile(data, filename, type) {
+    var file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+        var a = document.createElement("a"),
+                url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+}
+
 function toDataURL(url) {
   return new Promise(function (resolve, reject) {
     var xhr = new XMLHttpRequest();
@@ -189,8 +208,6 @@ async function getEncodedMD5(url) {
   return hashBase64;
 }
 
-var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
-var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
 
 if (!n_scripts) var n_scripts = 0;
 n_scripts++

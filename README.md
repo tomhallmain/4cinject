@@ -56,3 +56,9 @@ To do this, create a file *ext/md5s.json* as a JSON array containing base 64 enc
 Be sure to reload the extension in the browser extensions page after adding this file, and reload any previously loaded pages after.
 
 If setting TestHash is turned on, MD5s from each file on any thread will be tested against the list of hashes provided upon thread load. If a match is found, a red border is applied to the associated post. Recently seen content will have an orange border applied, and a filter can be set on any content.
+
+### Content Filtering
+
+Image and video content can be filtered by clicking on the "Filter" links created on posts with content. The
+
+To store filtered content across sessions, click the button in popup to download content filter, and add it to the folder as *ext/filteredMD5s.json*. Like the seen hashes file, the file content is a simple JSON array containing the hashes of the content filtered.

@@ -59,28 +59,46 @@ class MapCache {
 
   resize() {
     if (roughSizeOfObject(this.map) > this.maxSize) {
-      this.map.clear();
+      this.map = {};
     }
   }
 }
 
-class MD5sCache {
+class HashesCache {
   mapCache;
   lock;
   md5sList;
-  filteredMD5s = [];
+  filteredHashes = [];
 
   constructor() {
     this.lock = new MapLock();
-    this.mapCache = new MapCache('knownMD5sMap', this.lock, 200000);
+    this.mapCache = new MapCache('knownHashesMap', this.lock, 200000);
 
     try {
       if (fileCheck("md5s.json")) {
         this.md5sList = fetch("md5s.json").then(response => response.json());
       }
     }
-    catch {
+    catch (e) {
+      console.info("Seen hashes list not found");
       this.md5sList = [];
+    }
+
+    try {
+      if (fileCheck("filteredMD5s.json")) {
+        const temp = fetch("filteredMD5s.json").then(response => response.json());
+
+        temp.then((list) => {
+          for (const md5 of list) {
+            this.filteredHashes.push(md5);
+          }
+        });
+
+        this.filteredHashes.sort();
+      }
+    }
+    catch (e) {
+      console.info("Filtered hashes list not found");
     }
   }
 
@@ -108,14 +126,14 @@ class MD5sCache {
   }
 
   isFiltered(md5) {
-    return this.filteredMD5s.includes(md5);
+    return this.filteredHashes.includes(md5);
   }
 
   filterHashes(md5s) {
     for (md5 of md5s) {
       if (md5 !== '' && !this.isFiltered(md5)) {
         console.log('Adding filtered md5: ' + md5);
-        this.filteredMD5s.push(md5);
+        this.filteredHashes.push(md5);
       }
     }
   }
@@ -153,51 +171,65 @@ class MD5sCache {
 }
 
 
-// NOTE can't use md5 here because it's not exposed on the thread teaser image
-class SHA1sThreadsCache {
-  knownSha1sThreadsMap;
-  sha1ThreadIdsMap;
+class HashesThreadsCache {
+  knownHashesThreadsMap;
+  hashThreadIdsMap;
   lock;
-  botThreadSha1s = [];
+  botThreadHashes = [];
+  filteredThreadHashes = [];
+  hashesCache;
 
-  constructor() {
+  constructor(hashesCache) {
+    this.hashesCache = hashesCache;
     this.lock = new MapLock();
-    this.knownSha1sThreadsMap = new MapCache('knownSha1sThreadsMap', this.lock, 200000);
-    this.sha1ThreadIdsMap = new MapCache('sha1ThreadIdsMap', this.lock, 200000);
+    this.knownHashesThreadsMap = new MapCache('knownHashesThreadsMap', this.lock, 200000);
+    this.hashThreadIdsMap = new MapCache('hashThreadIdsMap', this.lock, 200000);
   }
 
   lockAndResize() {
     this.lock.set(true);
-    this.knownSha1sThreadsMap.resize();
-    this.sha1ThreadIdsMap.resize();
+    this.knownHashesThreadsMap.resize();
+    this.hashThreadIdsMap.resize();
   }
 
   unlock() {
     this.lock.set(false);
   }
 
-  isBotThread(sha1) {
-    return this.botThreadSha1s.indexOf(sha1) > -1;
+  isBotThread(md5) {
+    return this.botThreadHashes.indexOf(md5) > -1;
   }
 
-  async testIsSeenTwiceSha1Thread(url, threadId) {
+  getFullSizeImageURL(url) {
+    if (url.includes('s.jpg')) {
+      return url.replace('s.jpg', '.jpg');
+    } else if (url.includes('s.jpeg')) {
+      return url.replace('s.jpeg', '.jpeg');
+    } else if (url.includes('s.gif')) {
+      return url.replace('s.gif', '.jpg');
+    } else if (url.includes('s.jpg')) {
+      return url.replace('s.jpg', '.jpg');
+    }
+  }
+
+  async testIsSeenHashThreadImage(url, threadId) {
     this.lockAndResize();
 
     var isSeenFromPriorLoad = false;
-    var sha1;
+    var md5;
 
-    if (url in this.knownSha1sThreadsMap.map) {
-      sha1 = this.knownSha1sThreadsMap.map[url];
+    if (url in this.knownHashesThreadsMap.map) {
+      md5 = this.knownHashesThreadsMap.map[url];
       isSeenFromPriorLoad = true;
     }
     else {
-      sha1 = await getSHA1(url);
-      isSeenFromPriorLoad = Object.values(this.knownSha1sThreadsMap.map).includes(sha1);
-      this.knownSha1sThreadsMap.map[url] = sha1;
+      md5 = await getEncodedMD5(url);
+      isSeenFromPriorLoad = Object.values(this.knownHashesThreadsMap.map).includes(md5);
+      this.knownHashesThreadsMap.map[url] = md5;
     }
 
     if (!isSeenFromPriorLoad) {
-      this.sha1ThreadIdsMap.map[sha1] = threadId;
+      this.hashThreadIdsMap.map[md5] = threadId;
       this.unlock();
       return 0;
     }
@@ -205,19 +237,19 @@ class SHA1sThreadsCache {
       this.unlock();
       return 1;
     }
-    else if (sha1 in this.sha1ThreadIdsMap.map) {
+    else if (md5 in this.hashThreadIdsMap.map) {
       this.unlock();
 
-      if (this.sha1ThreadIdsMap.map[sha1] === threadId) {
+      if (this.hashThreadIdsMap.map[md5] === threadId) {
         return 0;
       }
       else {
-        this.botThreadSha1s.push(sha1);
+        this.botThreadHashes.push(md5);
         return 1;
       }
     }
     else {
-      this.sha1ThreadIdsMap.map[sha1] = threadId;
+      this.hashThreadIdsMap.map[md5] = threadId;
       this.unlock();
       return 0;
     }
@@ -275,8 +307,8 @@ class ThreadPostIDsCache {
 }
 
 
-var md5sCache = new MD5sCache();
-var sha1sThreadsCache = new SHA1sThreadsCache();
+var hashesCache = new HashesCache();
+var hashesThreadsCache = new HashesThreadsCache(hashesCache);
 var threadPostIDsCache = new ThreadPostIDsCache();
 var filteredIDs = [];
 var filteredFlags = [];
@@ -300,12 +332,12 @@ function updateContentFilter(request) {
 
   if (md5) {
     console.log("Filtering content md5: " + md5);
-    md5sCache.filteredMD5s.push(md5);
+    hashesCache.filteredHashes.push(md5);
   }
 }
 
 function testIsSeenHash(request, sender) {
-  md5sCache.testIsSeenHash(request.url, request.dataId).then((seenType) => {
+  hashesCache.testIsSeenHash(request.url, request.dataId).then((seenType) => {
     if (seenType == 0) {
       sendMessage({
         action: 'handleUnseenContent',
@@ -354,8 +386,8 @@ function findNewPostIDsForThread(request, sender) {
   }
 }
 
-function testSHA1ForThreadImage(request, sender) {
-  sha1sThreadsCache.testIsSeenTwiceSha1Thread(
+function testHashForThreadImage(request, sender) {
+  hashesThreadsCache.testIsSeenHashThreadImage(
       request.url, request.threadId).then((seenType) => {
     if (seenType == 1) {
       sendMessage({
@@ -390,14 +422,22 @@ chrome.runtime.onMessage.addListener(
 
       sendResponse({
         action: 'contentFilter',
-        data: md5sCache.filteredMD5s
+        data: hashesCache.filteredHashes
       });
 
     }
     else if (request.action == "setContentFilter") {
 
       const tempMD5s = request.filterSettings['contentFilter'];
-      md5sCache.filterHashes(tempMD5s);
+      hashesCache.filterHashes(tempMD5s);
+
+    }
+    else if (request.action == "downloadFilteredHashes") {
+
+      if (hashesCache.filteredHashes.length > 0) {
+        const data = "[\n\t\"" + hashesCache.filteredHashes.join("\",\n\t\"") + "\"\n]";
+        saveDataToDownloadedFile(data, "filteredMD5s", "application/json");
+      }
 
     }
   });
@@ -423,9 +463,9 @@ chrome.runtime.onMessageExternal.addListener(
       findNewPostIDsForThread(request, sender);
 
     }
-    else if (request.action == "testSHA1ForThreadImage" && request.url) {
+    else if (request.action == "testHashForThreadImage" && request.url) {
 
-      testSHA1ForThreadImage(request, sender);
+      testHashForThreadImage(request, sender);
 
     }
     else if (request.action == "updateContentFilter") {
@@ -437,7 +477,7 @@ chrome.runtime.onMessageExternal.addListener(
 
       sendMessage({
         action: 'contentFilter',
-        data: md5sCache.filteredMD5s
+        data: hashesCache.filteredHashes
       }, sender.tab.id);
 
     }

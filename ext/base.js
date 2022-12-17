@@ -487,7 +487,7 @@ function checkForBotAndShillThreads() {
     const thumb = getThumbImg(t.element);
     if (t.id && thumb) {
       chrome.runtime.sendMessage(extensionID, {
-        action: 'testSHA1ForThreadImage',
+        action: 'testHashForThreadImage',
         url: thumb.src,
         dataId: thumb.getAttribute('data-id'),
         threadId: t.id

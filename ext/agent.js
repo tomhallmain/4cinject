@@ -4,7 +4,7 @@ function openImgs(thumbImgs) {
   thumbImgs = thumbImgs || thread.getThumbImgs();
   thumbImgs = thumbImgs.filter( img => ! webmThumbImg(img) );
   for (var i = 0; i < thumbImgs.length; i++) {
-    setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
+    setTimeout(ImageExpansion.toggle, i*100, thumbImgs[i]);
   }
   const opened = thumbImgs.length
   if (debug) {
@@ -24,7 +24,7 @@ function openAll(thumbImgs, play) {
         continue
     }
     var thumb = thumbImgs[i].parentElement;
-    setTimeout(ImageExpansion.toggle(thumbImgs[i]), i*100);
+    setTimeout(ImageExpansion.toggle, i*100, thumbImgs[i]);
     if ( webmThumbImg(thumb) ) {
       if (! play === true) thumb.nextSibling.pause();
     }
@@ -201,8 +201,24 @@ function addFilterHash(thumbImg, md5) {
     action: 'updateContentFilter',
     md5: md5
   });
-  var post = getPostFromElement(thumbImg);
-  post.remove();
+
+  try {
+    var post = getPostFromElement(thumbImg);
+    post.remove();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function addFilterHashForAllRelatedContent(basePost) {
+  links = basePost.querySelectorAll('#filter-link');
+  for (i = links.length - 1; i >= 0; i--) {
+    try {
+      links[i].click();
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 
 function addFilterContentLink(thumbImg, dataMD5) {
@@ -213,14 +229,14 @@ function addFilterContentLink(thumbImg, dataMD5) {
   const fileText = thumbImg?.parentElement?.previousSibling;
 
   if (!fileText) {
+    console.log("Unable to add filter link: fileText element not present.");
     return;
   }
 
   const isLinkPresent = fileText.querySelector('#filter-link');
 
   if (isLinkPresent) {
-    console.log(isLinkPresent);
-    console.log("Unable to add filter link: fileText element not present or link already added.");
+    console.log("Unable to add filter link: link already added.");
     return;
   }
 
@@ -231,6 +247,18 @@ function addFilterContentLink(thumbImg, dataMD5) {
   };
   link.id = 'filter-link';
   fileText.appendChild(link);
+
+  const thisPost = fileText.parentElement?.parentElement;
+
+  if (thisPost && thisPost === basePost(thisPost)) {
+    var link = document.createElement('a');
+    link.textContent = " Filter All";
+    link.onclick = function(e) {
+      addFilterHashForAllRelatedContent(thisPost);
+    };
+    link.id = 'filter-link-2';
+    fileText.appendChild(link);
+  }
 }
 
 function handleUnseenContent(dataMD5) {

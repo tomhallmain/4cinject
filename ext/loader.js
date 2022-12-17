@@ -100,6 +100,9 @@ function messageIn(message) {
       case 'setIsBotThread':
         return 'setIsBotThread("' + message.dataId + '")'
 
+      case 'removeFilteredThread':
+        return 'removeFilteredThread("' + message.dataId + '")'
+
       default: console.log('Message not understood');
     };
   })(message);

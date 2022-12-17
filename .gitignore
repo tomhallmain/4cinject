@@ -1,4 +1,6 @@
 ext/md5s.json
 ext/sha1s.json
+ext/filteredMD5s.json
 filters/*
 *.swp
+*.DS_Store

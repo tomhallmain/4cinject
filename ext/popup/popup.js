@@ -4,8 +4,10 @@ function select(selector) {
   return document.querySelector(selector);
 }
 
-function mapBtn(btn, action) {
-  btn.addEventListener('click', function() { buttonPressed(action) });
+function mapBtn(btn, action, isBackground) {
+  btn.addEventListener('click', function() {
+    buttonPressed(action, isBackground);
+  });
 }
 
 function mapInput(input, action, isBackground) {
@@ -95,9 +97,15 @@ function sendMessageWithAction(action) {
 
 // Actions
 
-function buttonPressed(action) {
+function buttonPressed(action, isBackground) {
   console.log('button pressed for ' + action);
-  sendMessageWithAction(action)
+
+  if (isBackground) {
+    sendMessageToBackgroundWithAction(action);
+  }
+  else {
+    sendMessageWithAction(action)
+  }
 }
 
 function get(data) {
@@ -127,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn(    select('.fullScreen'),     'fullScreen'      );
   mapBtn(    select('.highlightNew'),   'highlightNew'    );
   mapBtn(    select('.catalogFilter'),  'catalogFilter'   );
+  mapBtn(    select('.downloadFilteredHashes'), 'downloadFilteredHashes', true );
   mapInput(  select('.threadFilter'),   'setThreadFilter' );
   mapInput(  select('.textTransforms'), 'setTextTransforms' );
   mapInput(  select('.contentFilter'),  'setContentFilter', true  );
