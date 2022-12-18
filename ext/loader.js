@@ -1,126 +1,59 @@
-const extensionID = String(chrome.runtime.id)
-
-fireEvent('var n_scripts = 0');
-fireEvent("const extensionID = \"" + extensionID + "\"");
+const extensionIDContentScript = String(chrome.runtime.id)
+var tabId = null;
 
 function loadScript(fileName) {
   var s = document.createElement('script');
   s.src = chrome.runtime.getURL(fileName);
   s.onload = function() { this.remove() };
   (document.head || document.documentElement).appendChild(s);
-};
-
-files = ['helpers.js', 'agent.js', 'reporter.js', 'base.js']
-files.map( file => loadScript(file) );
-
-chrome.runtime.onMessage.addListener(messageIn);
-
-function getArrayString(array) {
-  var arrayString = "["
-  for (i = 1; i <= array.length; i++) {
-    item = array[i-1]
-    switch (typeof(item)) {
-      case 'number':
-      case 'boolean':
-        arrayString = arrayString + item;
-        break;
-      case 'undefined':
-        arrayString = arrayString + 'undefined';
-        break;
-      case 'string':
-        arrayString = arrayString + '"' + item + '"';
-        break;
-    }
-
-    if (i < array.length) {
-      arrayString = arrayString + ","
-    }
-  }
-  arrayString = arrayString + "]"
-  return arrayString
 }
 
 function messageIn(message) {
 //  console.log('Content script received message: ');
-//  console.log(message);
-  event = (function(message) {
-    const filterSettings = message.filterSettings;
-    switch (message.action) {
-      case 'autoExpand':     return 'toggleAutoExpand()';
-      case 'expand':         return 'openImgs()';
-      case 'close':          return 'close()';
-      case 'digits':         return 'console.log(numbersGraph())';
-      case 'maxDigits':      return 'console.log(maxDigits())';
-      case 'threadGraph':    return 'threadGraph()';
-      case 'subthreads':     return 'toggleSubthreads()';
-      case 'contentExtract': return 'contentExtract()';
-      case 'fullScreen':     return 'toggleFullscreen()';
-      case 'catalogFilter':  return 'toggleFilter()';
-      case 'toggleTestHash': return 'toggleTestHash()';
-      case 'highlightNew':   return 'togglePostDiffHighlight()';
+  console.log(message);
+  switch (message.action) {
+    case 'importRemainingScripts':
+      tabId = message.data;
 
-      case 'setVolume':
-        return 'setVolume(' + (filterSettings['volume'] || 50)/100 + ')';
+      if (tabId) {
+        importRemainingScripts();
+      } else {
+        console.error("Failed to get tab ID.");
+      }
 
-      case 'getVolume':
-        messageOut('volume', window.localStorage['volume']);
-        break;
+      break;
+    case 'getVolume':
+      sendMessageToPopup('volume', window.localStorage['volume']);
+      break;
+    case 'getThreadFilter':
+      sendMessageToPopup('threadFilter', window.localStorage['threadFilter']);
+      break;
+    case 'getTextTransforms':
+      sendMessageToPopup('textTransforms', window.localStorage['textTransforms']);
+      break;
+    case 'downloadFilteredHashes':
+      saveDataToDownloadedFile(data, "filteredMD5s", "application/json");
 
-      case 'setThreadFilter':
-        var pattern = filterSettings['threadFilter'].replaceAll("\\", "\\\\").replaceAll('"', '\\"')
-        return 'setThreadFilter("' + pattern + '")';
-
-      case 'getThreadFilter':
-        messageOut('threadFilter', window.localStorage['threadFilter']);
-        break;
-
-      case 'setTextTransforms':
-        var pattern = filterSettings['textTransforms'].replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n")
-        return 'setTextTransforms("' + pattern + '")';
-
-      case 'getTextTransforms':
-        messageOut('textTransforms', window.localStorage['textTransforms']);
-        break;
-
-      case 'handleUnseenContent':
-        return 'handleUnseenContent("' + message.dataId + '")';
-
-      case 'handleFilteredContent':
-        return 'handleFilteredContent("' + message.dataId + '")';
-
-      case 'setIsSeenContent':
-        return 'setIsSeenContent("' + message.dataId + '",true)';
-
-      case 'setIsSeenContentNotStored':
-        return 'setIsSeenContent("' + message.dataId + '",false)';
-
-      case 'setNewPostStyle':
-        return 'highlightNewPosts(' + getArrayString(message.postIds) + ')';
-
-      case 'setIsBotThread':
-        return 'setIsBotThread("' + message.dataId + '")'
-
-      case 'removeFilteredThread':
-        return 'removeFilteredThread("' + message.dataId + '")'
-
-      default: console.log('Message not understood');
-    };
-  })(message);
-  if (event) {
-//    console.log(event);
-    fireEvent(event);
+      break;
+    default:
+      console.log('Message not understood: ' + message.action);
   }
 };
 
-function fireEvent(toFire) {
-  var s = document.createElement('script');
-  s.appendChild(document.createTextNode(toFire + ';'));
-  (document.head || document.documentElement).appendChild(s);
-};
-
-function messageOut(message, data) {
+// technically should be using the response for this
+function sendMessageToPopup(message, data) {
   chrome.runtime.sendMessage({
     msg: message,
     data: data
   });
 };
+
+
+loadScript('extensionID.js');
+loadScript('helpers.js');
+chrome.runtime.onMessage.addListener(messageIn);
+chrome.runtime.sendMessage({action: "setupInternalScripts"}); // set the tab id from the background script
+
+function importRemainingScripts() {
+  loadScript('base.js');
+}

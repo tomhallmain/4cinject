@@ -4,10 +4,19 @@ Simple extension for interfacing with 4Channel DOM.
 
 ## Setup
 - Clone the repo
-- Open chrome://extensions URL on Chrome browser
+- Open chrome://extensions URL on Chromium browser
 - Check option for developer mode
 - Select `Load Unpacked`
 - Select `ext` folder
+- Add extension ID now found in the Extensions page to a file (see below)
+
+There is an issue with sending the extension ID to the page on manifest V3. To get around this and make the extension usable, create a file named `extensionID.js` in `ext` folder containing a script setting the extension ID, for example:
+
+```javascript
+const extensionID = "hlmfnldefpcdbngdglfmbgecopfienoc"; // your ex
+```
+
+If this last step is skipped there may be errors in testing content hashes and other features that require the page to have a connection to the background script.
 
 ## Usage
 

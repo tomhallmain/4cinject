@@ -1,11 +1,11 @@
 {
   "name": "4CIJ",
-  "version": "1.0.0",
-  "manifest_version": 2,
+  "version": "1.0.1",
+  "manifest_version": 3,
   "description": "",
   "homepage_url": "https://4chan.org",
   "background": {
-    "scripts": ["background.js"]
+    "service_worker": "background-wrapper.js"
   },
   "content_scripts": [{
     "matches": [
@@ -15,7 +15,7 @@
     "js": [ "loader.js" ],
     "persistent": true
   }],
-  "browser_action": {
+  "action": {
     "default_icon": "icon.png",
     "default_title": "4CIJ",
     "default_popup": "popup/index.html"
@@ -24,18 +24,30 @@
     "128": "icon.png"
   },
   "permissions": [
-    "https://*/*",
-    "http://*/*",
     "activeTab",
+    "scripting",
     "storage"
   ],
-  "web_accessible_resources": [
-    "base.js",
-    "helpers.js",
-    "agent.js",
-    "reporter.js",
-    "popup/popup.js"
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ],
+  "web_accessible_resources": [{
+    "resources": [
+      "base.js",
+      "extensionID.js",
+      "helpers.js",
+      "agent.js",
+      "reporter.js",
+      "popup/popup.js",
+      "md5s.json",
+      "filteredMD5s.json"
+    ],
+    "matches": [
+      "https://boards.4chan.org/*",
+      "https://boards.4channel.org/*"
+    ]
+  }],
   "externally_connectable": {
     "matches": [
       "https://boards.4chan.org/*",

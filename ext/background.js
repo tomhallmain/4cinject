@@ -1,14 +1,20 @@
 
 // SETUP ////////////
 
-const extensionID = String(chrome.runtime.id);
+const extensionIDBackground = String(chrome.runtime.id);
+const activeTabParams = {
+  active: true,
+  currentWindow: true
+}
 
 function fileCheck(url) {
-  var http = new XMLHttpRequest();
-  http.open('HEAD', url, false);
-  http.send();
-  return http.status!=404;
+//  var http = new XMLHttpRequest();
+//  http.open('HEAD', url, false);
+//  http.send();
+//  return http.status!=404;
 }
+
+
 
 class MapLock {
   isLocked;
@@ -75,30 +81,28 @@ class HashesCache {
     this.mapCache = new MapCache('knownHashesMap', this.lock, 200000);
 
     try {
-      if (fileCheck("md5s.json")) {
-        this.md5sList = fetch("md5s.json").then(response => response.json());
-      }
+      this.md5sList = fetch("md5s.json").then(response => response.json());
     }
     catch (e) {
-      console.info("Seen hashes list not found");
+      console.error(e);
+      console.log("Failed to fetch seen hashes list");
       this.md5sList = [];
     }
 
     try {
-      if (fileCheck("filteredMD5s.json")) {
-        const temp = fetch("filteredMD5s.json").then(response => response.json());
+      const temp = fetch("filteredMD5s.json").then(response => response.json());
 
-        temp.then((list) => {
-          for (const md5 of list) {
-            this.filteredHashes.push(md5);
-          }
-        });
+      temp.then((list) => {
+        for (const md5 of list) {
+          this.filteredHashes.push(md5);
+        }
+      });
 
-        this.filteredHashes.sort();
-      }
+      this.filteredHashes.sort();
     }
     catch (e) {
-      console.info("Filtered hashes list not found");
+      console.error(e);
+      console.log("Filtered hashes list not found");
     }
   }
 
@@ -314,16 +318,7 @@ var filteredIDs = [];
 var filteredFlags = [];
 
 
-function loadScript(fileName) {
-  var s = document.createElement('script');
-  s.src = chrome.runtime.getURL(fileName);
-  s.onload = function() { this.remove() };
-  (document.head || document.documentElement).appendChild(s);
-};
-
-files = ['spark-md5/spark-md5.min.js', 'helpers.js'];
-files.map( file => loadScript(file) );
-
+importScripts('spark-md5/spark-md5.min.js', 'helpers.js');
 
 // Services
 
@@ -338,33 +333,21 @@ function updateContentFilter(request) {
 
 function testIsSeenHash(request, sender) {
   hashesCache.testIsSeenHash(request.url, request.dataId).then((seenType) => {
-    if (seenType == 0) {
-      sendMessage({
-        action: 'handleUnseenContent',
-        url: request.url,
-        dataId: request.dataId
-      }, sender.tab.id);
+    if (seenType == 0) { // content not known to be seen
+      const func = function(id) {handleUnseenContent(id);};
+      fireEventToPage(func, [request.dataId], sender.tab.id);
     }
-    else if (seenType == 1) {
-      sendMessage({
-        action: 'setIsSeenContent',
-        url: request.url,
-        dataId: request.dataId
-      }, sender.tab.id);
+    else if (seenType == 1) { // this content was marked as seen in md5s.json
+      func = function(id) {setIsSeenContent(id, true);};
+      fireEventToPage(func, [request.dataId], sender.tab.id);
     }
-    else if (seenType == 2) {
-      sendMessage({
-        action: 'setIsSeenContentNotStored',
-        url: request.url,
-        dataId: request.dataId
-      }, sender.tab.id);
+    else if (seenType == 2) { // this content was seen before during this session
+      const func = function(id) {setIsSeenContent(id, false);};
+      fireEventToPage(func, [request.dataId], sender.tab.id);
     }
-    else if (seenType == 3) {
-      sendMessage({
-        action: 'handleFilteredContent',
-        url: request.url,
-        dataId: request.dataId
-      }, sender.tab.id);
+    else if (seenType == 3) { // filter this content
+      const func = function(id) {handleFilteredContent(id);};
+      fireEventToPage(func, [request.dataId], sender.tab.id);
     }
   });
 }
@@ -374,12 +357,9 @@ function findNewPostIDsForThread(request, sender) {
       request.url, request.postIds);
 
   if (newPostIds.length > 0) {
-    console.log("New post IDs: " + newPostIds)
-    sendMessage({
-      action: 'setNewPostStyle',
-      url: request.url,
-      postIds: newPostIds
-    }, sender.tab.id);
+    console.log("New post IDs: " + newPostIds);
+    func = function(postIds) {highlightNewPosts(postIds);};
+    fireEventToPage(func, [newPostIds], sender.tab.id);
   }
   else {
     console.log("Initial thread save or no new post IDs found.");
@@ -390,11 +370,8 @@ function testHashForThreadImage(request, sender) {
   hashesThreadsCache.testIsSeenHashThreadImage(
       request.url, request.threadId).then((seenType) => {
     if (seenType == 1) {
-      sendMessage({
-        action: 'setIsBotThread',
-        url: request.url,
-        dataId: request.dataId
-      }, sender.tab.id);
+      const func = function(id) {setIsBotThread(id);};
+      fireEventToPage(func, [request.dataId], sender.tab.id);
     }
   });
 }
@@ -403,42 +380,191 @@ function testHashForThreadImage(request, sender) {
 // Messaging
 
 function sendMessage(message, tabId) {
+  console.log("Sending message:");
+  console.log(message);
+  console.log(Object.keys(chrome.tabs));
+  if (!tabId) tabId = chrome.tabs.getCurrent.id;
   chrome.tabs.query({}, function(tabs){
     chrome.tabs.sendMessage(tabId, message);
   });
 }
 
+async function getCurrentTab() {
+  let queryOptions = { active: true, lastFocusedWindow: true };
+  // `tab` will either be a `tabs.Tab` instance or `undefined`.
+  let [tab] = await chrome.tabs.query(queryOptions);
+  return tab;
+}
 
-// Awaits messages from popup
+function loadScriptToPage(fileName, tabId) {
+  chrome.scripting.executeScript(
+    {
+      target: {tabId: tabId},
+      files: [fileName],
+    },
+    () => {});
+}
+
+function fireEventToPage(func, args, tabId) {
+  if (tabId) {
+    chrome.scripting.executeScript(
+      {
+        target: {tabId: tabId, allFrames: true},
+        func: func,
+        args: args || []
+      },
+      () => {});
+  } else {
+    getCurrentTab().then(tab => {
+      if (tab) {
+        chrome.scripting.executeScript(
+          {
+            target: {tabId: tab.id, allFrames: true},
+            func: func,
+            args: args || []
+          },
+          () => {});
+      }
+    })
+  }
+}
+
+function setupInternalScripts(tabId) {
+  loadScriptToPage('extensionID.js', tabId);
+  loadScriptToPage('helpers.js', tabId);
+  console.log("returning tab id to content script: " + tabId);
+  sendMessage({
+    action: "importRemainingScripts",
+    data: tabId
+  }, tabId);
+//  loadScriptToPage('reporter.js', tabId);
+  loadScriptToPage('base0.js', tabId);
+}
+
+
+// Awaits messages from popup + content script
 
 chrome.runtime.onMessage.addListener(
   function(request,sender,sendResponse) {
-    if (request.action == "updateContentFilter") {
+    console.log(request);
+    var func, args, pattern;
 
-      updateContentFilter(request);
+    switch (request.action) {
 
-    }
-    else if (request.action == "getContentFilter") {
+      case "setupInternalScripts":
+        setupInternalScripts(sender.tab.id);
 
-      sendResponse({
-        action: 'contentFilter',
-        data: hashesCache.filteredHashes
-      });
+        break;
 
-    }
-    else if (request.action == "setContentFilter") {
+      case "updateContentFilter":
+        updateContentFilter(request);
 
-      const tempMD5s = request.filterSettings['contentFilter'];
-      hashesCache.filterHashes(tempMD5s);
+        break;
 
-    }
-    else if (request.action == "downloadFilteredHashes") {
+      case "getContentFilter":
+        sendResponse({
+          action: 'contentFilter',
+          data: hashesCache.filteredHashes
+        });
 
-      if (hashesCache.filteredHashes.length > 0) {
-        const data = "[\n\t\"" + hashesCache.filteredHashes.join("\",\n\t\"") + "\"\n]";
-        saveDataToDownloadedFile(data, "filteredMD5s", "application/json");
-      }
+        break;
 
+      case "setContentFilter":
+        const tempMD5s = request.filterSettings['contentFilter'];
+        hashesCache.filterHashes(tempMD5s);
+
+        break;
+
+      case 'autoExpand':
+        fireEventToPage(function() {toggleAutoExpand()});
+        break;
+      case 'expand':
+        fireEventToPage(function() {openImgs()});
+        break;
+      case 'close':
+        fireEventToPage(function() {close()});
+        break;
+      case 'digits':
+        fireEventToPage(function() {console.log(numbersGraph())});
+        break;
+      case 'maxDigits':
+        fireEventToPage(function() {console.log(maxDigits())});
+        break;
+      case 'threadGraph':
+        fireEventToPage(function() {threadGraph()});
+        break;
+      case 'subthreads':
+        fireEventToPage(function() {toggleSubthreads()});
+        break;
+      case 'contentExtract':
+        fireEventToPage(function() {contentExtract()});
+        break;
+      case 'fullScreen':
+        fireEventToPage(function() {toggleFullscreen()});
+        break;
+      case 'catalogFilter':
+        fireEventToPage(function() {toggleFilter()});
+        break;
+      case 'toggleTestHash':
+        fireEventToPage(function() {toggleTestHash()});
+        break;
+      case 'highlightNew':
+        fireEventToPage(function() {togglePostDiffHighlight()});
+        break;
+
+      case 'setVolume':
+        func = function(level) {setVolume(level)};
+        args = [(request.filterSettings['volume'] || 50)/100];
+        fireEventToPage(func, args);
+
+        break;
+
+      case 'setThreadFilter':
+        pattern = request.filterSettings['threadFilter']
+          .replaceAll("\\", "\\\\")
+          .replaceAll('"', '\\"')
+        func = function(pattern){setThreadFilter(pattern)};
+        fireEventToPage(func, [pattern]);
+
+        break;
+
+      case 'setTextTransforms':
+        pattern = request.filterSettings['textTransforms']
+          .replaceAll("\\", "\\\\")
+          .replaceAll('"', '\\"')
+          .replaceAll("\n", "\\n");
+        func = function(pattern){setTextTransforms(pattern)};
+        fireEventToPage(func, [pattern]);
+
+        break;
+
+      // requests from content script / page
+
+
+      case "testMD5":
+        if (request.url) {
+          testIsSeenHash(request, sender);
+        }
+
+        break;
+
+      case "findNewPostIDsForThread":
+        if (request.url) {
+          findNewPostIDsForThread(request, sender);
+        }
+
+        break;
+
+      case "testHashForThreadImage":
+        if (request.url) {
+          testHashForThreadImage(request, sender);
+        }
+
+        break;
+
+      case 'removeFilteredThread':
+        fireEventToPage(function(id) {removeFilteredThread(id)}, [message.dataId]);
+        break;
     }
   });
 
@@ -450,35 +576,29 @@ chrome.runtime.onMessageExternal.addListener(
 
     //if (sender.url === blocklistedWebsite)
     //  return;  // don't allow this web page access
+    //  console.log('Background worker received message: ');
 
     console.log(request);
 
-    if (request.action == "testMD5" && request.url) {
+    switch (request.action) {
+      // internal requests
 
-      testIsSeenHash(request, sender);
+      case "updateContentFilter":
+        updateContentFilter(request);
 
-    }
-    else if (request.action == "findNewPostIDsForThread" && request.url) {
+        break;
 
-      findNewPostIDsForThread(request, sender);
+      case "getContentFilter":
+        // technically should use response here instead
+        sendMessage({
+          action: 'contentFilter',
+          data: hashesCache.filteredHashes
+        }, sender.tab.id);
 
-    }
-    else if (request.action == "testHashForThreadImage" && request.url) {
+        break;
 
-      testHashForThreadImage(request, sender);
-
-    }
-    else if (request.action == "updateContentFilter") {
-
-      updateContentFilter(request);
-
-    }
-    else if (request.action == "getContentFilter") {
-
-      sendMessage({
-        action: 'contentFilter',
-        data: hashesCache.filteredHashes
-      }, sender.tab.id);
-
+      default:
+        console.log('Message not understood: ' + request.action);
+        break;
     }
   });

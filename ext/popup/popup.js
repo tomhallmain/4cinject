@@ -1,16 +1,24 @@
 // Setup
 
+var contentFilter = [];
+
 function select(selector) {
   return document.querySelector(selector);
 }
 
-function mapBtn(btn, action, isBackground) {
-  btn.addEventListener('click', function() {
-    buttonPressed(action, isBackground);
-  });
+function mapBtn(btn, action, isActiveTab) {
+  if (action === 'downloadFilteredHashes') {
+    btn.addEventListener('click', function() {
+      downloadFilteredHashes();
+    });
+  } else {
+    btn.addEventListener('click', function() {
+      buttonPressed(action, isActiveTab);
+    });
+  }
 }
 
-function mapInput(input, action, isBackground) {
+function mapInput(input, action, isActiveTab) {
   input.addEventListener('change', function() {
     var data = input.value;
 
@@ -23,10 +31,10 @@ function mapInput(input, action, isBackground) {
 
     updateFilter(input.className, data);
 
-    if (isBackground) {
-      sendMessageToBackgroundWithAction(action);
-    } else {
+    if (isActiveTab) {
       sendMessageWithAction(action);
+    } else {
+      sendMessageToBackgroundWithAction(action);
     }
   });
 }
@@ -34,7 +42,7 @@ function mapInput(input, action, isBackground) {
 function mapSlider(slider, action) {
   slider.addEventListener('change', function() {
     updateFilter(slider.id, slider.value)
-    sendMessageWithAction(action);
+    sendMessageToBackgroundWithAction(action);
   });
 }
 
@@ -66,14 +74,17 @@ function sendMessageToBackgroundPage(message) {
 
       if (response.action === 'contentFilter') {
         if (response.data !== undefined) {
-          select('.contentFilter').innerHTML = response.data.join('\n');
+          contentFilter = response.data;
+          select('.contentFilter').innerHTML = contentFilter.join('\n');
         }
       }
     });
 }
 
 function sendMessageToBackgroundWithAction(action) {
-  sendMessageToBackgroundPage({action: action});
+  msg = {action: action};
+  msg = applyFilter(msg);
+  sendMessageToBackgroundPage(msg);
 }
 
 function sendMessageToActiveTab(msg) {
@@ -95,16 +106,41 @@ function sendMessageWithAction(action) {
 }
 
 
+function saveDataToDownloadedFile(data, filename, type) {
+    var file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+        var a = document.createElement("a"),
+                url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+}
+
+function downloadFilteredHashes() {
+  if (contentFilter.length > 0) {
+    const data = "[\n\t\"" + contentFilter.join("\",\n\t\"") + "\"\n]";
+    saveDataToDownloadedFile(data, "filteredMD5s", "application/json");
+  }
+}
+
+
 // Actions
 
-function buttonPressed(action, isBackground) {
+function buttonPressed(action, isActiveTab) {
   console.log('button pressed for ' + action);
 
-  if (isBackground) {
-    sendMessageToBackgroundWithAction(action);
-  }
-  else {
+  if (isActiveTab) {
     sendMessageWithAction(action)
+  } else {
+    sendMessageToBackgroundWithAction(action);
   }
 }
 
@@ -135,10 +171,10 @@ document.addEventListener('DOMContentLoaded', function() {
   mapBtn(    select('.fullScreen'),     'fullScreen'      );
   mapBtn(    select('.highlightNew'),   'highlightNew'    );
   mapBtn(    select('.catalogFilter'),  'catalogFilter'   );
-  mapBtn(    select('.downloadFilteredHashes'), 'downloadFilteredHashes', true );
+  mapBtn(    select('.downloadFilteredHashes'), 'downloadFilteredHashes' );
   mapInput(  select('.threadFilter'),   'setThreadFilter' );
   mapInput(  select('.textTransforms'), 'setTextTransforms' );
-  mapInput(  select('.contentFilter'),  'setContentFilter', true  );
+  mapInput(  select('.contentFilter'),  'setContentFilter'  );
   mapSlider( select('#volume'),         'setVolume'       );
 });
 

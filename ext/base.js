@@ -1,4 +1,8 @@
 
+// Classes and methods are defined here to be accessible in the in-page context,
+// but these will not have access to content script JS objects and methods.
+
+
 // SETUP ////////////
 
 class Board {
@@ -232,18 +236,6 @@ class Thread4C {
     return pattern.test(this.element.textContent);
   }
 
-  verifyContentFreshness() {
-    const thumbs = this.getThumbs();
-    for (var i = 0; i < thumbs.length; i++) {
-      const thumb = thumbs[i];
-      const link = thumb.href;
-      const dataMD5 = thumb.querySelector("img").getAttribute('data-md5');
-      chrome.runtime.sendMessage(extensionID, {
-        action: 'testMD5', url: link, dataId: dataMD5
-      });
-    }
-  }
-
   getProportionSeenContent() {
     if (this.numContentItems == 0) {
       return -1;
@@ -256,6 +248,213 @@ class Thread4C {
     this.openedWebms = arrayRemove(this.openedWebms, video);
   }
 }
+
+
+// INTERACTION /////////
+
+function openImgs(thumbImgs) {
+  thumbImgs = thumbImgs || thread.getThumbImgs();
+  thumbImgs = thumbImgs.filter( img => ! webmThumbImg(img) );
+  for (var i = 0; i < thumbImgs.length; i++) {
+    const post = getPostFromElement(thumbImgs[i]);
+    const borderColor = post.style.borderColor;
+    if (borderColor != 'red' && borderColor != 'orange') {
+      setTimeout(ImageExpansion.toggle, i*200, thumbImgs[i]);
+    }
+  }
+  const opened = thumbImgs.length
+  if (debug) {
+    if (opened > 0) {
+      console.log('Opened ' + thumbImgs.length + ' file thumbs');
+    } else {
+      console.log('Could not find any image thumbs to expand');
+    }
+  }
+}
+
+function openAll(thumbImgs, play) {
+  thumbImgs = thumbImgs || thread.getThumbImgs();
+  var opened = 0
+  for (var i = 0; i < thumbImgs.length; i++) {
+    if (!thumbImgs[i]) {
+        continue
+    }
+    var thumb = thumbImgs[i].parentElement;
+    setTimeout(ImageExpansion.toggle, i*100, thumbImgs[i]);
+    if ( webmThumbImg(thumb) ) {
+      if (! play === true) thumb.nextSibling.pause();
+    }
+    opened++
+  }
+  if (debug) console.log('Opened ' + opened + ' file thumbs');
+}
+
+function close(imgsExp) {
+  // Close videos
+  var closeLinks = thread.getCloseLinks();
+  for (var i = 0; i < closeLinks.length; i++) { closeLinks[i].click() }
+  // Toggle expanded images off
+  imgsExp = imgsExp || thread.getExpandedImgs();
+  for (var i = 0; i < imgsExp.length; i++) { ImageExpansion.toggle(imgsExp[i]) }
+  if (debug) console.log('Closed ' + closeLinks.length + ' videos and ' + imgsExp.length + ' images');
+}
+
+function expandImages(thumbImgs) {
+  thumbImgs = thumbImgs || thread.getThumbImgs();
+  thumbImgs.length > 0 ? openImgs(thumbImgs) : true;
+}
+
+function closeVideo(video) {
+  if (video.tagName === "VIDEO") {
+    thread.closedWebmThumbs.push(getThumb(video));
+    getCloseLink(video).click();
+  }
+}
+
+function openVideo(videoThumb) {
+  thread.closedWebmThumbs = arrayRemove(thread.closedWebmThumbs, videoThumb);
+  openAll(thread.getThumbImgs([videoThumb]), true);
+}
+
+function currentVideoIndex(currentVideo, webmThumbImgs) {
+  if (currentVideo) {
+    const currentThumbImg = getThumbImg(getThumb(currentVideo));
+    return webmThumbImgs.indexOf(currentThumbImg);
+  } else {
+    return -1;
+  }
+}
+
+function openNextVideo(currentVideo) {
+  const webmThumbImgs = thread.getThumbImgs(null, true)
+    .filter( img => webmThumbImg(img) );
+  var currentIndex = currentVideoIndex(currentVideo, webmThumbImgs);
+  currentIndex++;
+  const nextThumbImg = webmThumbImgs[currentIndex];
+  openAll([nextThumbImg], true);
+  getPostFromElement(nextThumbImg)?.scrollIntoView();
+}
+
+function openPreviousVideo(currentVideo) {
+  const webmThumbImgs = thread.getThumbImgs(null, true)
+    .filter( img => webmThumbImg(img) );
+  var currentIndex = currentVideoIndex(currentVideo, webmThumbImgs);
+  currentIndex = currentIndex < 0 ? 0 : currentIndex - 1;
+  const previousThumbImg = webmThumbImgs[currentIndex]
+  openAll([previousThumbImg], true);
+  getPostFromElement(previousThumbImg)?.scrollIntoView();
+}
+
+function engagePost(post, thumb) {
+  if (!post) return false;
+  if (thumb) {
+    const {type, content, expanded} = postContent(post, thumb);
+    const webm = type == 'webm'
+    var engageContent = content
+    if (!expanded && settingOn('autoExpand')) {
+      if (webm) {
+        openVideo(thumb, true);
+        engageContent = thread.getVids(post, true);
+      } else { // type == 'img'
+        ImageExpansion.toggle(content);
+        engageContent = first(thread.getExpandedImgs([thumb]));
+      }
+    }
+    if (settingOn('fullscreen')) {
+      engageContent.requestFullscreen();
+      //const v = vh + 50;
+      //if ((!webm && engageContent.height > v)
+      //  || (webm && engageContent.videoHeight > v)) {
+      //} else if (fullscreen()) {
+      //  exitFullscreen();
+      //}
+    }
+  }
+  post.scrollIntoView();
+  return true
+}
+
+function previousNewPost() {
+  if (thread.newPostIds.length == 0) return;
+  if ((currentNewPost - 1) >= 0) {
+    currentNewPost--
+    const post = thread.getPostById(newPostIds[currentNewPost])
+    const thumb = post?.querySelector('.fileThumb')
+    engagePost(post, thumb)
+  }
+}
+
+function nextNewPost() {
+  if (thread.newPostIds.length == 0) return;
+  if ((currentNewPost + 1) < thread.newPostIds.length) {
+    currentNewPost++
+    const post = thread.getPostById(thread.newPostIds[currentNewPost])
+    const thumb = post?.querySelector('.fileThumb')
+    engagePost(post, thumb)
+  }
+}
+
+function nextContent(thumbs) {
+  thumbs = thread.checkT(thumbs);
+  if (thumbs && (thread.currentContent + 1) < thumbs.length) {
+    thread.currentContent++
+    const thumb = thumbs[thread.currentContent];
+    const next = getPostFromElement(thumb);
+    engagePost(next, thumb);
+  } else {
+    if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
+  }
+}
+
+function previousContent(thumbs) {
+  thumbs = thread.checkT(thumbs);
+  if (thumbs && (thread.currentContent - 1) >= 0) {
+    thread.currentContent--
+    const thumb = thumbs[thread.currentContent];
+    const previous = getPostFromElement(thumb);
+    engagePost(previous, thumb);
+  } else {
+    if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
+  }
+}
+
+function jump(forward) {
+  var base = basePost(thread.currentPost());
+  var searching = true
+  var jumpPost = null
+  while (!jumpPost || searching) {
+    var jumpBase = forward ? thread.nextPost(base) : thread.previousPost(base);
+    if (jumpBase) {
+      var thumb = first(thread.getThumbs(postContainer(jumpBase)));
+      if (thumb) {
+        jumpPost = getPostFromElement(thumb);
+        thread.currentContent = thread.getThumbs().indexOf(thumb);
+        searching = false
+      } else { base = jumpBase }
+    } else { searching = false }
+  }
+  if (jumpPost) engagePost(jumpPost, thumb);
+}
+
+function mute(video) {
+  video.muted = true;
+}
+
+function unmute(video) {
+  video.muted = false;
+}
+
+function exitFullscreen() {
+  try { document.exitFullscreen() }
+  catch (e) { } // suppress error
+  if (document.fullScreenElement && fullscreen()) {
+    exitFullscreen()
+  }
+}
+
+if (!n_scripts) var n_scripts = 0;
+n_scripts++
+
 
 if (activeStyleSheet !== 'Tomorrow') {
   setActiveStyleSheet('Tomorrow');
@@ -311,10 +510,6 @@ function setOrderBy(order) {
   }
 }
 
-function toggleFullscreen() {
-  local('fullscreen', !settingOn('fullscreen'));
-}
-
 function fullscreen() {
   return document.fullscreen;
 }
@@ -322,48 +517,6 @@ function fullscreen() {
 function setVolume(volume) {
   local('volume', volume);
   thread?.getAudioWebms().forEach( webm => webm.volume = volume );
-}
-
-function toggleSubthreads() {
-  const isOn = settingOn('subthreads');
-  local('subthreads', !isOn);
-  if (!threadPage) return;
-  if (!isOn) {
-    subthreads();
-  } else {
-    window.location.reload();
-  }
-}
-
-function toggleTestHash() {
-  const wasOn = settingOn('testHash');
-  local('testHash', !wasOn);
-  if (!threadPage) return;
-  if (!wasOn) {
-    verifyContentFreshness();
-  }
-}
-
-function toggleAutoExpand() {
-  const wasOn = settingOn('autoExpand');
-  local('autoExpand', !wasOn);
-  if (!threadPage) return;
-  if (!wasOn) {
-    openImgs();
-  } else {
-    close();
-  }
-}
-
-function toggleFilter() {
-  const wasOn = settingOn('catalogFilter');
-  local('catalogFilter', !wasOn);
-  if (!catalogPage) return;
-  if (!wasOn) {
-    catalogFilter();
-  } else {
-    window.location.reload();
-  }
 }
 
 function setThreadFilter(filterPattern) {
@@ -480,45 +633,6 @@ function togglePostDiffHighlight() {
   const isOn = settingOn('postDiffHighlight');
   local('postDiffHighlight', !isOn);
 }
-
-function checkForBotAndShillThreads() {
-  const threads = getThreads()
-  for (t of threads) {
-    const thumb = getThumbImg(t.element);
-    if (t.id && thumb) {
-      chrome.runtime.sendMessage(extensionID, {
-        action: 'testHashForThreadImage',
-        url: thumb.src,
-        dataId: thumb.getAttribute('data-id'),
-        threadId: t.id
-      })
-    }
-  }
-}
-
-
-setDefault('autoExpand', 'false');
-setDefault('fullscreen', 'false');
-setDefault('subthreads', 'true');
-setDefault('catalogFilter', 'true');
-setDefault('testHash', 'true');
-setDefault('postDiffHighlight', 'true');
-
-if (!local('volume')) setVolume(0.5); // Set initial volume to 50%
-
-if (boardBasePage || catalogPage) {
-  setOrderBy('date')
-  if (boardBasePage) { window.location.replace(initialLink + 'catalog') }
-}
-if (catalogPage) {
-  if (settingOn('catalogFilter')) catalogFilter();
-  if (settingOn('runTextTransforms')) transformTeaserTexts();
-  if (settingOn('testHash')) checkForBotAndShillThreads();
-}
-
-[].slice.call(document.querySelectorAll('div[class^=ad]'))
-  .map( el => el.innerHTML = '' )
-
 
 // GENERAL ////////////
 
@@ -688,13 +802,6 @@ observeDOM(document.body, function(m) {
       unmute(video)
       video.volume = local('volume');
       thread.openedWebms.push(video);
-      // if (settingOn('testHash')) {
-      //   chrome.runtime.sendMessage(extensionID, {
-      //     action: 'testHash',
-      //     url: added.src,
-      //     dataId: getDataMD5(video)
-      //   });
-      // }
     } else if (/^ad[a-z]-/.test(added?.parentElement?.className)) {
       added.innerHTML = '';
     }
@@ -772,57 +879,8 @@ window.addEventListener("keydown", function (event) {
 
 // ASYNC HANDLING//////////////////////
 
-
-function sleepAsync(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function loadData(func, callback) {
-  var count = 0;
-  while(typeof func !== "function") {
-    count++;
-    await sleepAsync(200);
-
-    if (count > 10) {
-      break;
-    }
-  }
-  callback();
-}
-
 if (threadPage) {
-  while (n_scripts<3) { sleepAsync(120) }
-
-  loadData(maxDigits, function() {reportDigits()});
-  if (settingOn('subthreads')) {
-    loadData(subthreads, function() {
-      subthreads();
-    });
-  }
-  if (settingOn('postDiffHighlight')) {
-    loadData(postDiffHighlight, function() {
-      postDiffHighlight();
-    });
-  }
-  if (settingOn('runTextTransforms')) transformPostText();
-  if (settingOn('testHash')) {
-    thread.verifyContentFreshness();
-    setContentStats();
-  }
-
-  if (board.name === "pol") {
-    loadData(idFlagGraph, function() { reportFlags() });
-    loadData(reportNPosts, function() { reportNPosts() });
-  }
-  else if (board.name === "biz") {
-    loadData(reportOpPosts, function() { reportOpPosts() });
-    loadData(reportNPosts, function() { reportNPosts() });
+  if (settingOn('autoExpand')) {
+    setTimeout(openImgs, 1000);
   }
 }
-
-// Defined empty in case of undefined functions
-if (!expandImages) var expandImages = function() { }
-if (!maxDigits) var maxDigits = function() { }
-if (!postDiffHighlight) var postDiffHighlight = function() { }
-if (!subthreads) var subthreads = function() { }
-if (!idFlagGraph) var idFlagGraph = function() { }

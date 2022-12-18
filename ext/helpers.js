@@ -1,6 +1,16 @@
 // HELPERS ///////////
 
 const debug = false;
+//var extensionID = null;
+var n_scripts = 1;
+
+function setExtensionID(id) {
+  extensionID = id;
+}
+
+function getExtensionId() {
+  return extensionID;
+}
 
 function isEmpty(ob){
     for(var i in ob){ if(ob.hasOwnProperty(i)){return false;}}
@@ -113,7 +123,45 @@ function insertAfter(referenceNode, newNode) {
   referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
-// Function to download data to a file
+// technically could make use of a mutation element to inject if it is
+// observed by the scripts loaded to the page as source (not as content script)
+
+function setMutationElement() {
+  el = document.createElement('div');
+  el.id = 'mutation-element';
+  el.hidden = true;
+  document.head.appendChild(el);
+}
+
+function getMutationElement() {
+  return document.head.querySelector('#mutation-element');
+}
+
+function getArrayString(array) {
+  var arrayString = "["
+  for (i = 1; i <= array.length; i++) {
+    item = array[i-1]
+    switch (typeof(item)) {
+      case 'number':
+      case 'boolean':
+        arrayString = arrayString + item;
+        break;
+      case 'undefined':
+        arrayString = arrayString + 'undefined';
+        break;
+      case 'string':
+        arrayString = arrayString + '"' + item + '"';
+        break;
+    }
+
+    if (i < array.length) {
+      arrayString = arrayString + ","
+    }
+  }
+  arrayString = arrayString + "]"
+  return arrayString
+}
+
 function saveDataToDownloadedFile(data, filename, type) {
     var file = new Blob([data], {type: type});
     if (window.navigator.msSaveOrOpenBlob) // IE10+
