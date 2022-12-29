@@ -65,7 +65,7 @@ let activeTabParams = {
   currentWindow: true
 }
 
-function sendMessageToBackgroundPage(message) {
+function sendMessageToBackground(message) {
   message = applyFilter(message);
   chrome.runtime.sendMessage(message,
     function (response) {
@@ -84,7 +84,7 @@ function sendMessageToBackgroundPage(message) {
 function sendMessageToBackgroundWithAction(action) {
   msg = {action: action};
   msg = applyFilter(msg);
-  sendMessageToBackgroundPage(msg);
+  sendMessageToBackground(msg);
 }
 
 function sendMessageToActiveTab(msg) {

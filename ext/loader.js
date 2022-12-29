@@ -1,4 +1,4 @@
-const extensionIDContentScript = String(chrome.runtime.id)
+const extensionIDContentScript = String(chrome.runtime.id);
 var tabId = null;
 
 function loadScript(fileName) {

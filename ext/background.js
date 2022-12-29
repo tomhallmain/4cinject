@@ -33,12 +33,17 @@ class MapCache {
   map;
   mapLock;
   maxSize;
+  shouldStore;
 
   constructor(name, mapLock,maxSize) {
     this.name = name;
     this.mapLock = mapLock;
-    this.map = {};
     this.maxSize = maxSize;
+    this.shouldStore = true;
+
+    chrome.storage.local.get([this.name]).then((result) => {
+      this.map = result[this.name] || {};
+    });
   }
 
   clear() {
@@ -61,12 +66,35 @@ class MapCache {
 
   unlock() {
     this.mapLock.set(false);
+    this.setPendingStore();
   }
 
+  // TODO don't just erase everything
   resize() {
     if (roughSizeOfObject(this.map) > this.maxSize) {
       this.map = {};
     }
+  }
+
+  setPendingStore() {
+    if (this.shouldStore) {
+      this.shouldStore = false;
+      setTimeout(this.doStore, 3000, this);
+    }
+  }
+
+  doStore(mapCache) {
+    mapCache.store();
+  }
+
+  store() {
+    this.shouldStore = true;
+    var saveObject = {};
+    saveObject[this.name] = this.map;
+
+    chrome.storage.local.set(saveObject).then(() => {
+      console.log("Stored map for " + this.name)
+    });
   }
 }
 
@@ -78,7 +106,7 @@ class HashesCache {
 
   constructor() {
     this.lock = new MapLock();
-    this.mapCache = new MapCache('knownHashesMap', this.lock, 200000);
+    this.mapCache = new MapCache('knownHashesMap', this.lock, 400000);
 
     try {
       this.md5sList = fetch("md5s.json").then(response => response.json());
@@ -186,8 +214,8 @@ class HashesThreadsCache {
   constructor(hashesCache) {
     this.hashesCache = hashesCache;
     this.lock = new MapLock();
-    this.knownHashesThreadsMap = new MapCache('knownHashesThreadsMap', this.lock, 200000);
-    this.hashThreadIdsMap = new MapCache('hashThreadIdsMap', this.lock, 200000);
+    this.knownHashesThreadsMap = new MapCache('knownHashesThreadsMap', this.lock, 300000);
+    this.hashThreadIdsMap = new MapCache('hashThreadIdsMap', this.lock, 300000);
   }
 
   lockAndResize() {
@@ -266,7 +294,7 @@ class ThreadPostIDsCache {
 
   constructor() {
     this.lock = new MapLock();
-    this.mapCache = new MapCache('threadKnownPostIdsMap', this.lock, 200000);
+    this.mapCache = new MapCache('threadKnownPostIdsMap', this.lock, 300000);
   }
 
   lockAndResize() {

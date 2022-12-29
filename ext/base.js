@@ -674,7 +674,9 @@ function getPostMessage(post) {
 }
 
 function postContent(post, thumb) {
-  if (!thumb) thumb = post.querySelector('.fileThumb')
+  if (!thumb) {
+    thumb = post?.querySelector('.fileThumb')
+  }
   if (thumb) {
     const expanded = thumbHidden(thumb);
     const thumbImg = getThumbImg(thumb);
@@ -853,7 +855,7 @@ window.addEventListener("keydown", function (event) {
         if (board.isGif) {
           currentVideo.requestFullscreen();
         } else {
-          postContent(getPostInSeries()).content.requestFullscreen();
+          postContent(thread.getPostInSeries())?.content?.requestFullscreen();
         }
       }
       else if (event.altKey) {
