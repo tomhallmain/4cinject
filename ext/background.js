@@ -559,8 +559,8 @@ chrome.runtime.onMessage.addListener(
       case 'setTextTransforms':
         pattern = request.filterSettings['textTransforms']
           .replaceAll("\\", "\\\\")
-          .replaceAll('"', '\\"')
-          .replaceAll("\n", "\\n");
+          .replaceAll('"', '\\"');
+//          .replaceAll("\n", "\\n");
         func = function(pattern){setTextTransforms(pattern)};
         fireEventToPage(func, [pattern]);
 

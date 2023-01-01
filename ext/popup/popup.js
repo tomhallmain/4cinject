@@ -69,13 +69,15 @@ function sendMessageToBackground(message) {
   message = applyFilter(message);
   chrome.runtime.sendMessage(message,
     function (response) {
-      console.log("Received response from background: ");
-      console.log(response);
+      if (response) {
+        console.log("Received response from background: ");
+        console.log(response);
 
-      if (response.action === 'contentFilter') {
-        if (response.data !== undefined) {
-          contentFilter = response.data;
-          select('.contentFilter').innerHTML = contentFilter.join('\n');
+        if (response.action === 'contentFilter') {
+          if (response.data !== undefined) {
+            contentFilter = response.data;
+            select('.contentFilter').innerHTML = contentFilter.join('\n');
+          }
         }
       }
     });

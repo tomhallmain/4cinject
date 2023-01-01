@@ -455,9 +455,12 @@ function exitFullscreen() {
 if (!n_scripts) var n_scripts = 0;
 n_scripts++
 
-
-if (activeStyleSheet !== 'Tomorrow') {
-  setActiveStyleSheet('Tomorrow');
+try {
+  if (activeStyleSheet !== 'Tomorrow') {
+    setActiveStyleSheet('Tomorrow');
+  }
+} catch (e) {
+  console.log("Failed to check or set active style sheet.");
 }
 
 const initialLink = window.location.href.replaceAll(/#.+/g, '');
