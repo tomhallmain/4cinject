@@ -209,22 +209,25 @@ function subthreads() {
 }
 
 function numbersGraph() {
-  var postIds = thread.getPostIds()
-  var graph = {}
-  const postLength = postIds[0].length // Assuming all posts IDs will have same length
+  var postIds = thread.getPostIds();
+  if (!postIds || !postIds[0]) {
+    return;
+  }
+  var graph = {};
+  const postLength = postIds[0].length; // Assuming all posts IDs will have same length
   postIds.map( postId => {
-    count = 1
+    count = 1;
     var numbers = postId.split('').reverse()
     for (var i=1; i < postLength; i++) {
       if (numbers[i] === numbers[i-1]) {
-        count++
+        count++;
       } else { break }
     }
     if (count > 1) {
       (graph[count] = graph[count] || []).push([postId])
     }
   })
-  return graph
+  return graph;
 }
 
 function maxDigits() {
@@ -641,21 +644,23 @@ class Thread4C0 {
   }
 
   getPosts() {
-    return [].slice.call(this.element.querySelectorAll('.post'));
+    return this.element ? [].slice.call(this.element.querySelectorAll('.post')) : [];
   }
 
   checkP(posts) { return posts || this.getPosts() }
 
   getPostIds() {
     if (this.postIds.length == 0) {
-      this.postIds = this.getPosts().map( post => getPostId(post) );
+      this.postIds = this.getPosts()
+          .filter(post => post && true)
+          .map( post => getPostId(post) );
     }
 
     return this.postIds;
   }
 
   getOriginalPost() {
-    return this.element.querySelector('.post.op');
+    return this.element?.querySelector('.post.op');
   }
 
   getCurrentContent(thumbs) {
@@ -723,7 +728,7 @@ class Thread4C0 {
 
   getThumbs(el) {
     el = el || this.element;
-    return [].slice.call(el.querySelectorAll('.fileThumb'));
+    return el ? [].slice.call(el.querySelectorAll('.fileThumb')) : [];
   }
 
   getThumbImgs(thumbs, includeHidden) {
@@ -938,9 +943,12 @@ function catalogFilter() {
   for (var i = 0; i < threads.length; i++) {
     const t = threads[i];
     if (filterPattern?.test(t.element.textContent)) {
+      console.log("Removing thread " + t.element.textContent);
       t.element.remove();
-      threads.splice(i, 1);
     }
+//    else if (board.isWorkSafe) {
+//      continue;
+//    }
     else if (t.hasChallenge()) {
       t.setBackgroundColor('teal');
     }
@@ -1085,7 +1093,7 @@ function getThreadId(thread) {
 }
 
 function getPostId(post) {
-  return post.id.slice(1);
+  return post?.id.slice(1);
 }
 
 function getPostMessage(post) {
@@ -1093,14 +1101,16 @@ function getPostMessage(post) {
 }
 
 function postContent(post, thumb) {
-  if (!thumb) thumb = post.querySelector('.fileThumb')
+  if (!thumb) {
+    thumb = post.querySelector('.fileThumb')
+  }
   if (thumb) {
     const expanded = thumbHidden(thumb);
     const thumbImg = getThumbImg(thumb);
-    const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
-    const content = (expanded && type == 'img' ?
+    const type = thumbImg ? (webmThumbImg(thumbImg) ? 'webm' : 'img') : null;
+    const content = thumbImg ? (expanded && type == 'img' ?
         first(thread.getExpandedImgs([thumb])) : expanded ?
-          thread.getVids(post, true) : thumbImg);
+          thread.getVids(post, true) : thumbImg) : false;
     return {type: type, content: content, expanded: expanded}
   }
   else {
@@ -1240,30 +1250,35 @@ if (catalogPage) {
 if (threadPage) {
   while (n_scripts<3) { sleepAsync(120); }
 
-  loadData(maxDigits, function() {reportDigits()});
-  if (settingOn('subthreads')) {
-    loadData(subthreads, function() {
-      subthreads();
-    });
-  }
-  if (settingOn('postDiffHighlight')) {
-    loadData(postDiffHighlight, function() {
-      postDiffHighlight();
-    });
-  }
-  if (settingOn('runTextTransforms')) transformPostText();
-  if (settingOn('testHash')) {
-    thread.verifyContentFreshness();
-    setContentStats();
-  }
+  try {
+    loadData(maxDigits, function() {reportDigits()});
+    if (settingOn('subthreads')) {
+      loadData(subthreads, function() {
+        subthreads();
+      });
+    }
+    if (settingOn('postDiffHighlight')) {
+      loadData(postDiffHighlight, function() {
+        postDiffHighlight();
+      });
+    }
+    if (settingOn('runTextTransforms')) transformPostText();
+    if (settingOn('testHash')) {
+      thread.verifyContentFreshness();
+      setContentStats();
+    }
 
-  if (board.name === "pol") {
-    loadData(idFlagGraph, function() { reportFlags() });
-    loadData(reportNPosts, function() { reportNPosts() });
-  }
-  else if (board.name === "biz") {
-    loadData(reportOpPosts, function() { reportOpPosts() });
-    loadData(reportNPosts, function() { reportNPosts() });
+    if (board.name === "pol") {
+      loadData(idFlagGraph, function() { reportFlags() });
+      loadData(reportNPosts, function() { reportNPosts() });
+    }
+    else if (board.name === "biz") {
+      loadData(reportOpPosts, function() { reportOpPosts() });
+      loadData(reportNPosts, function() { reportNPosts() });
+    }
+  } catch (e) {
+    // if the page is not found, we can expect an error
+    console.log(e.message);
   }
 }
 

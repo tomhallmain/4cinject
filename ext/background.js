@@ -69,10 +69,14 @@ class MapCache {
     this.setPendingStore();
   }
 
-  // TODO don't just erase everything
+  // TODO keep commonly seen keys instead of just most recent
   resize() {
     if (roughSizeOfObject(this.map) > this.maxSize) {
-      this.map = {};
+      const keys = Object.keys(this.map);
+      const max = keys.length / 2;
+      for (let i = 0; i < max; i++) {
+        delete this.map[keys[i]];
+      }
     }
   }
 
@@ -93,7 +97,7 @@ class MapCache {
     saveObject[this.name] = this.map;
 
     chrome.storage.local.set(saveObject).then(() => {
-      console.log("Stored map for " + this.name)
+      console.log("Stored map for " + this.name);
     });
   }
 }
@@ -117,12 +121,18 @@ class HashesCache {
       this.md5sList = [];
     }
 
+    chrome.storage.local.get(["filteredHashes"]).then((result) => {
+      this.filteredHashes = result["filteredHashes"] || [];
+    });
+
     try {
       const temp = fetch("filteredMD5s.json").then(response => response.json());
 
       temp.then((list) => {
         for (const md5 of list) {
-          this.filteredHashes.push(md5);
+          if (!this.filteredHashes.includes(md5)) {
+            this.filteredHashes.push(md5);
+          }
         }
       });
 
@@ -164,10 +174,15 @@ class HashesCache {
   filterHashes(md5s) {
     for (md5 of md5s) {
       if (md5 !== '' && !this.isFiltered(md5)) {
-        console.log('Adding filtered md5: ' + md5);
+        console.log('Filtering content md5: ' + md5);
         this.filteredHashes.push(md5);
       }
     }
+
+    const saveObject = {"filteredHashes": this.filteredHashes};
+    chrome.storage.local.set(saveObject).then(() => {
+      console.log("Stored filtered hashes list");
+    });
   }
 
   async testIsSeenHash(url, md5) {
@@ -354,8 +369,7 @@ function updateContentFilter(request) {
   const md5 = request.md5;
 
   if (md5) {
-    console.log("Filtering content md5: " + md5);
-    hashesCache.filteredHashes.push(md5);
+    hashesCache.filterHashes([md5]);
   }
 }
 

@@ -85,7 +85,7 @@ class Thread4C {
   }
 
   getPosts() {
-    return [].slice.call(this.element.querySelectorAll('.post'));
+    return this.element ? [].slice.call(this.element.querySelectorAll('.post')) : [];
   }
 
   checkP(posts) { return posts || this.getPosts() }
@@ -98,8 +98,17 @@ class Thread4C {
     return this.postIds;
   }
 
+  getNewPostIds() {
+    if (this.newPostIds.length == 0) {
+      this.newPostIds = this.getPosts().filter( post =>
+          post?.style.backgroundColor === 'rgb(63, 75, 99)' ).map( post => getPostId(post) );
+    }
+
+    return this.newPostIds;
+  }
+
   getOriginalPost() {
-    return this.element.querySelector('.post.op');
+    return this.element?.querySelector('.post.op');
   }
 
   getCurrentContent(thumbs) {
@@ -167,7 +176,7 @@ class Thread4C {
 
   getThumbs(el) {
     el = el || this.element;
-    return [].slice.call(el.querySelectorAll('.fileThumb'));
+    return el ? [].slice.call(el.querySelectorAll('.fileThumb')) : [];
   }
 
   getThumbImgs(thumbs, includeHidden) {
@@ -254,13 +263,14 @@ class Thread4C {
 
 function openImgs(thumbImgs) {
   thumbImgs = thumbImgs || thread.getThumbImgs();
-  thumbImgs = thumbImgs.filter( img => ! webmThumbImg(img) );
-  for (var i = 0; i < thumbImgs.length; i++) {
-    const post = getPostFromElement(thumbImgs[i]);
+  thumbImgs = thumbImgs.filter( img => img && ! webmThumbImg(img) );
+  thumbImgs = thumbImgs.filter( img => {
+    const post = getPostFromElement(img);
     const borderColor = post.style.borderColor;
-    if (borderColor != 'red' && borderColor != 'orange') {
-      setTimeout(ImageExpansion.toggle, i*200, thumbImgs[i]);
-    }
+    return borderColor !== 'red' && borderColor !== 'orange';
+  });
+  for (var i = 0; i < thumbImgs.length; i++) {
+    setTimeout(ImageExpansion.toggle, i*200, thumbImgs[i]);
   }
   const opened = thumbImgs.length
   if (debug) {
@@ -281,7 +291,7 @@ function openAll(thumbImgs, play) {
     }
     var thumb = thumbImgs[i].parentElement;
     setTimeout(ImageExpansion.toggle, i*100, thumbImgs[i]);
-    if ( webmThumbImg(thumb) ) {
+    if ( thumb && webmThumbImg(thumb) ) {
       if (! play === true) thumb.nextSibling.pause();
     }
     opened++
@@ -327,7 +337,7 @@ function currentVideoIndex(currentVideo, webmThumbImgs) {
 
 function openNextVideo(currentVideo) {
   const webmThumbImgs = thread.getThumbImgs(null, true)
-    .filter( img => webmThumbImg(img) );
+    .filter( img => img && webmThumbImg(img) );
   var currentIndex = currentVideoIndex(currentVideo, webmThumbImgs);
   currentIndex++;
   const nextThumbImg = webmThumbImgs[currentIndex];
@@ -337,7 +347,7 @@ function openNextVideo(currentVideo) {
 
 function openPreviousVideo(currentVideo) {
   const webmThumbImgs = thread.getThumbImgs(null, true)
-    .filter( img => webmThumbImg(img) );
+    .filter( img => img && webmThumbImg(img) );
   var currentIndex = currentVideoIndex(currentVideo, webmThumbImgs);
   currentIndex = currentIndex < 0 ? 0 : currentIndex - 1;
   const previousThumbImg = webmThumbImgs[currentIndex]
@@ -375,22 +385,22 @@ function engagePost(post, thumb) {
 }
 
 function previousNewPost() {
-  if (thread.newPostIds.length == 0) return;
-  if ((currentNewPost - 1) >= 0) {
-    currentNewPost--
-    const post = thread.getPostById(newPostIds[currentNewPost])
-    const thumb = post?.querySelector('.fileThumb')
-    engagePost(post, thumb)
+  if (thread.getNewPostIds().length == 0) return;
+  if ((thread.currentNewPost - 1) >= 0) {
+    thread.currentNewPost--;
+    const post = thread.getPostById(thread.getNewPostIds()[thread.currentNewPost]);
+    const thumb = post?.querySelector('.fileThumb');
+    engagePost(post, thumb);
   }
 }
 
 function nextNewPost() {
-  if (thread.newPostIds.length == 0) return;
-  if ((currentNewPost + 1) < thread.newPostIds.length) {
-    currentNewPost++
-    const post = thread.getPostById(thread.newPostIds[currentNewPost])
-    const thumb = post?.querySelector('.fileThumb')
-    engagePost(post, thumb)
+  if (thread.getNewPostIds().length == 0) return;
+  if ((thread.currentNewPost + 1) < thread.getNewPostIds().length) {
+    thread.currentNewPost++;
+    const post = thread.getPostById(thread.getNewPostIds()[thread.currentNewPost]);
+    const thumb = post?.querySelector('.fileThumb');
+    engagePost(post, thumb);
   }
 }
 
@@ -398,9 +408,20 @@ function nextContent(thumbs) {
   thumbs = thread.checkT(thumbs);
   if (thumbs && (thread.currentContent + 1) < thumbs.length) {
     thread.currentContent++
-    const thumb = thumbs[thread.currentContent];
-    const next = getPostFromElement(thumb);
-    engagePost(next, thumb);
+    var next = getPostFromElement(thumbs[thread.currentContent]);
+
+    // skip seen content
+    while (next && (next?.style.borderColor === 'red'
+        || next?.style.borderColor === 'orange')) {
+      if ((thread.currentContent + 1) < thumbs.length) {
+        thread.currentContent++;
+        next = getPostFromElement(thumbs[thread.currentContent]);
+      } else {
+        return;
+      }
+    }
+
+    engagePost(next, thumbs[thread.currentContent]);
   } else {
     if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
   }
@@ -410,9 +431,20 @@ function previousContent(thumbs) {
   thumbs = thread.checkT(thumbs);
   if (thumbs && (thread.currentContent - 1) >= 0) {
     thread.currentContent--
-    const thumb = thumbs[thread.currentContent];
-    const previous = getPostFromElement(thumb);
-    engagePost(previous, thumb);
+    let previous = getPostFromElement(thumbs[thread.currentContent]);
+
+    // skip seen content
+    while (previous && (previous?.style.borderColor === 'red'
+        || previous?.style.borderColor === 'orange')) {
+      if ((thread.currentContent - 1) >= 0) {
+        thread.currentContent--;
+        previous = getPostFromElement(thumbs[thread.currentContent]);
+      } else {
+        return;
+      }
+    }
+
+    engagePost(previous, thumbs[thread.currentContent]);
   } else {
     if (settingOn('fullscreen') && fullscreen()) exitFullscreen();
   }
@@ -522,66 +554,6 @@ function setVolume(volume) {
   thread?.getAudioWebms().forEach( webm => webm.volume = volume );
 }
 
-function setThreadFilter(filterPattern) {
-  local('threadFilter', filterPattern);
-  if (!catalogPage || filterPattern === "") return;
-  window.location.reload();
-}
-
-function catalogFilter() {
-  const threads = getThreads();
-  const threadFilter = local('threadFilter')
-  var filterPattern;
-  if (threadFilter != undefined && threadFilter !== "") {
-    filterPattern = new RegExp(threadFilter)
-  }
-  for (var i = 0; i < threads.length; i++) {
-    const t = threads[i];
-    if (filterPattern?.test(t.element.textContent)) {
-      t.element.remove();
-      threads.splice(i, 1);
-    }
-    else if (t.hasChallenge()) {
-      t.setBackgroundColor('teal');
-    }
-    else if (t.hasImageContent()) {
-      t.setBackgroundColor('green');
-    }
-    else if (t.hasExternalLink()) {
-      t.setBackgroundColor('darkblue');
-    }
-  }
-}
-
-function setTextTransforms(transformsString) {
-  local('textTransforms', transformsString);
-  const runTransforms = transformsString && transformsString !== ""
-  local('runTextTransforms', runTransforms)
-  if (!threadPage || !runTransforms) return;
-  window.location.reload();
-}
-
-function getTextTransforms() {
-  transformsString = local('textTransforms')
-  keyValues = transformsString.split(/(\n|,)/)
-  transforms = {}
-
-  for (pair of keyValues) {
-    try {
-      items = pair.split("==")
-      pattern = items[0]
-      const test = new RegExp(pattern, 'g')
-      replacement = items[1]
-      transforms[pattern] = replacement
-    }
-    catch {
-      console.log("Failed to add invalid transform: " + pair)
-    }
-  }
-
-  return transforms
-}
-
 function transformElementHTML(transforms, element) {
   if (!transforms || !element) return;
   var string = element.innerHTML
@@ -597,38 +569,6 @@ function transformElementHTML(transforms, element) {
   }
   if (patternMatch) {
     element.innerHTML = string;
-  }
-}
-
-function transformTeaserTexts(transforms) {
-  transforms = transforms || getTextTransforms();
-  const threads = getThreads();
-  for (t of threads) {
-    try {
-      var teaserEl = t.getTeaser();
-      transformElementHTML(transforms, teaserEl);
-    }
-    catch (e) {
-      console.log("Could not get message or make replacements for thread teaser: ");
-      console.log(e);
-    }
-  }
-}
-
-function transformPostText(posts, transforms) {
-  transforms = transforms || getTextTransforms();
-  subject = thread.getSubject();
-  transformElementHTML(transforms, subject);
-  posts = thread.checkP(posts);
-  for (post of posts) {
-    try {
-      var postMessageEl = getPostMessage(post)
-      transformElementHTML(transforms, postMessageEl);
-    }
-    catch (e) {
-      console.log("Could not get message or make replacements for post: ")
-      console.log(e);
-    }
   }
 }
 
@@ -669,7 +609,7 @@ function getThreadId(thread) {
 }
 
 function getPostId(post) {
-  return post.id.slice(1);
+  return post?.id.slice(1);
 }
 
 function getPostMessage(post) {
@@ -683,10 +623,10 @@ function postContent(post, thumb) {
   if (thumb) {
     const expanded = thumbHidden(thumb);
     const thumbImg = getThumbImg(thumb);
-    const type = (webmThumbImg(thumbImg) ? 'webm' : 'img');
-    const content = (expanded && type == 'img' ?
+    const type = thumbImg ? (webmThumbImg(thumbImg) ? 'webm' : 'img') : null;
+    const content = thumbImg ? (expanded && type == 'img' ?
         first(thread.getExpandedImgs([thumb])) : expanded ?
-          thread.getVids(post, true) : thumbImg);
+          thread.getVids(post, true) : thumbImg) : null;
     return {type: type, content: content, expanded: expanded}
   }
   else {
@@ -711,7 +651,7 @@ function thumbHidden(thumb) {
 }
 
 function webmThumbImg(thumbImg) {
-  return /.webm$/.test(thumbImg.parentElement.href);
+  return thumbImg ? /.webm$/.test(thumbImg.parentElement.href) : false;
 }
 
 function getCloseLink(video) {
@@ -885,7 +825,12 @@ window.addEventListener("keydown", function (event) {
 // ASYNC HANDLING//////////////////////
 
 if (threadPage) {
-  if (settingOn('autoExpand')) {
-    setTimeout(openImgs, 1000);
+  try {
+    if (settingOn('autoExpand')) {
+      setTimeout(openImgs, 1000);
+    }
+  } catch (e) {
+    // if the page is not found, we can expect an error
+    console.log(e.message);
   }
 }
