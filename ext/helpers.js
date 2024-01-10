@@ -120,7 +120,7 @@ function last(arr) {
 }
 
 function insertAfter(referenceNode, newNode) {
-  referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+  referenceNode.parentNode?.insertBefore(newNode, referenceNode.nextSibling);
 }
 
 // technically could make use of a mutation element to inject if it is
@@ -249,6 +249,7 @@ function hexToBase64(str) {
 }
 
 async function getEncodedMD5(url) {
+  if (!url) return null;
   let blob = await fetch(url).then(res => res.blob());
   let data = await blob.arrayBuffer();
   let hash = SparkMD5.ArrayBuffer.hash(data, false);

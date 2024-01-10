@@ -172,10 +172,11 @@ class HashesCache {
   }
 
   filterHashes(md5s) {
-    for (md5 of md5s) {
-      if (md5 !== '' && !this.isFiltered(md5)) {
-        console.log('Filtering content md5: ' + md5);
-        this.filteredHashes.push(md5);
+    console.log(md5s);
+    for (const hash of md5s) {
+      if (hash && hash !== '' && !this.isFiltered(hash)) {
+        console.log('Filtering content md5: ' + hash);
+        this.filteredHashes.push(hash);
       }
     }
 
@@ -224,6 +225,7 @@ class HashesThreadsCache {
   lock;
   botThreadHashes = [];
   filteredThreadHashes = [];
+  teaserFilters = [];
   hashesCache;
 
   constructor(hashesCache) {
@@ -231,6 +233,10 @@ class HashesThreadsCache {
     this.lock = new MapLock();
     this.knownHashesThreadsMap = new MapCache('knownHashesThreadsMap', this.lock, 300000);
     this.hashThreadIdsMap = new MapCache('hashThreadIdsMap', this.lock, 300000);
+
+    chrome.storage.local.get(["teaserFilters"]).then((result) => {
+      this.teaserFilters = result["teaserFilters"] || [];
+    });
   }
 
   lockAndResize() {
@@ -247,23 +253,60 @@ class HashesThreadsCache {
     return this.botThreadHashes.indexOf(md5) > -1;
   }
 
-  getFullSizeImageURL(url) {
-    if (url.includes('s.jpg')) {
-      return url.replace('s.jpg', '.jpg');
-    } else if (url.includes('s.jpeg')) {
-      return url.replace('s.jpeg', '.jpeg');
-    } else if (url.includes('s.gif')) {
-      return url.replace('s.gif', '.jpg');
-    } else if (url.includes('s.jpg')) {
-      return url.replace('s.jpg', '.jpg');
+  isFiltered(teaser) {
+    const teaserLower = teaser.toLowerCase();
+
+    for (let test of this.teaserFilters) {
+      if (test && test.length > 0) {
+        if (test.length == 1) {
+          if (teaserLower === test.toLowerCase()) {
+            console.log("Filtering by teaser: " + teaserLower);
+            console.log("Matching teaser test: " + test);
+            return true;
+          }
+        } else if (teaserLower.includes(test.toLowerCase())) {
+          console.log("Filtering by teaser: " + teaserLower);
+          console.log("Matching teaser test: " + test);
+          return true;
+        }
+      }
+    }
+
+    console.log("Teaser did not match any filters: " + teaserLower);
+    return false;
+  }
+
+  async getMD5(url) {
+    var md5;
+    if (url in this.knownHashesThreadsMap.map) {
+      md5 = this.knownHashesThreadsMap.map[url];
+    } else {
+      md5 = await getEncodedMD5(url);
+    }
+    return md5;
+  }
+
+  async filterThread(url, teaser) {
+    const md5 = await this.getMD5(url);
+    if (md5) {
+      this.hashesCache.filterHashes([md5]);
+    }
+    if (teaser) {
+      this.teaserFilters.push(teaser);
+      const saveObject = {"teaserFilters": this.teaserFilters};
+      chrome.storage.local.set(saveObject).then(() => {
+        console.log("Stored filtered teasers list");
+      });
     }
   }
 
-  async testIsSeenHashThreadImage(url, threadId) {
-    this.lockAndResize();
-
+  async testThread(request) {
+    const url = request.url;
+    const threadId = request.threadId;
+    const teaser = request.teaser;
     var isSeenFromPriorLoad = false;
     var md5;
+    this.lockAndResize();
 
     if (url in this.knownHashesThreadsMap.map) {
       md5 = this.knownHashesThreadsMap.map[url];
@@ -275,10 +318,17 @@ class HashesThreadsCache {
       this.knownHashesThreadsMap.map[url] = md5;
     }
 
-    if (!isSeenFromPriorLoad) {
+    const isFilteredTeaser = this.isFiltered(teaser);
+
+    if (!isSeenFromPriorLoad || isFilteredTeaser) {
       this.hashThreadIdsMap.map[md5] = threadId;
       this.unlock();
-      return 0;
+
+      if (isFilteredTeaser || hashesCache.isFiltered(md5)) {
+        return 2;
+      } else {
+        return 0;
+      }
     }
     else if (this.isBotThread(threadId)) {
       this.unlock();
@@ -373,6 +423,13 @@ function updateContentFilter(request) {
   }
 }
 
+function filterThread(request) {
+  const teaser = request.teaser?.toLowerCase();
+  hashesThreadsCache.filterThread(request.url, teaser).then(() => {
+    console.log("Filtered a thread");
+  });
+}
+
 function testIsSeenHash(request, sender) {
   hashesCache.testIsSeenHash(request.url, request.dataId).then((seenType) => {
     if (seenType == 0) { // content not known to be seen
@@ -394,6 +451,28 @@ function testIsSeenHash(request, sender) {
   });
 }
 
+function getFullSizeImageURL(url) {
+  if (url.includes('s.jpg')) {
+    return url.replace('s.jpg', '.jpg');
+  } else if (url.includes('s.jpeg')) {
+    return url.replace('s.jpeg', '.jpeg');
+  } else if (url.includes('s.gif')) {
+    return url.replace('s.gif', '.jpg');
+  } else if (url.includes('s.jpg')) {
+    return url.replace('s.jpg', '.jpg');
+  } else {
+    return url;
+  }
+}
+
+function downloadImages(request, sender) {
+  for (i = 0; i < request.urls.length; i++) {
+    const url = getFullSizeImageURL(request.urls[i]);
+    setTimeout(chrome.downloads.download, i * 200, {url: url});
+    console.log('Downloading image: ' + url);
+  }
+}
+
 function findNewPostIDsForThread(request, sender) {
   const newPostIds = threadPostIDsCache.findNewPostIDsForThread(
       request.url, request.postIds);
@@ -408,12 +487,19 @@ function findNewPostIDsForThread(request, sender) {
   }
 }
 
-function testHashForThreadImage(request, sender) {
-  hashesThreadsCache.testIsSeenHashThreadImage(
-      request.url, request.threadId).then((seenType) => {
-    if (seenType == 1) {
+function testThread(request, sender) {
+  hashesThreadsCache.testThread(request).then((seenType) => {
+    if (seenType == 0) {
+      const func = function(id) {addFilterThreadLink(id);};
+      fireEventToPage(func, [request.threadId], sender.tab.id);
+    }
+    else if (seenType == 1) {
       const func = function(id) {setIsBotThread(id);};
-      fireEventToPage(func, [request.dataId], sender.tab.id);
+      fireEventToPage(func, [request.threadId], sender.tab.id);
+    }
+    else if (seenType == 2) {
+      const func = function(id) {filterThreadById(id);};
+      fireEventToPage(func, [request.threadId], sender.tab.id);
     }
   });
 }
@@ -558,26 +644,18 @@ chrome.runtime.onMessage.addListener(
         func = function(level) {setVolume(level)};
         args = [(request.filterSettings['volume'] || 50)/100];
         fireEventToPage(func, args);
-
         break;
 
       case 'setThreadFilter':
-        pattern = request.filterSettings['threadFilter']
-          .replaceAll("\\", "\\\\")
-          .replaceAll('"', '\\"')
+        pattern = request.filterSettings['threadFilter'];
         func = function(pattern){setThreadFilter(pattern)};
         fireEventToPage(func, [pattern]);
-
         break;
 
       case 'setTextTransforms':
         pattern = request.filterSettings['textTransforms']
-          .replaceAll("\\", "\\\\")
-          .replaceAll('"', '\\"');
-//          .replaceAll("\n", "\\n");
         func = function(pattern){setTextTransforms(pattern)};
         fireEventToPage(func, [pattern]);
-
         break;
 
       // requests from content script / page
@@ -590,6 +668,13 @@ chrome.runtime.onMessage.addListener(
 
         break;
 
+      case "downloadImages":
+        if (request.urls) {
+          downloadImages(request, sender);
+        }
+
+        break;
+
       case "findNewPostIDsForThread":
         if (request.url) {
           findNewPostIDsForThread(request, sender);
@@ -597,15 +682,23 @@ chrome.runtime.onMessage.addListener(
 
         break;
 
-      case "testHashForThreadImage":
+      case "testThread":
         if (request.url) {
-          testHashForThreadImage(request, sender);
+          testThread(request, sender);
         }
 
         break;
 
+      case "filterThread":
+        filterThread(request, sender);
+        break;
+
       case 'removeFilteredThread':
         fireEventToPage(function(id) {removeFilteredThread(id)}, [message.dataId]);
+        break;
+
+      default:
+        console.log("Message not understood: " + request.action);
         break;
     }
   });
@@ -627,7 +720,6 @@ chrome.runtime.onMessageExternal.addListener(
 
       case "updateContentFilter":
         updateContentFilter(request);
-
         break;
 
       case "getContentFilter":
@@ -636,7 +728,6 @@ chrome.runtime.onMessageExternal.addListener(
           action: 'contentFilter',
           data: hashesCache.filteredHashes
         }, sender.tab.id);
-
         break;
 
       default:

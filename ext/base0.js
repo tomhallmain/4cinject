@@ -37,6 +37,65 @@ function exitFullscreen() {
   }
 }
 
+function addFilterThreadLink(threadId) {
+  const threadObj = getThread(threadId);
+  if (!threadObj || !threadObj.element) {
+    console.log("Unable to add filter link: invalid thread object.");
+    return;
+  }
+
+  const isLinkPresent = threadObj.element.querySelector('#filter-link');
+  if (isLinkPresent) {
+    return;
+  }
+
+  var link = document.createElement('a');
+  link.textContent = " Filter";
+  link.onclick = function(e) {
+    addFilterThread(threadId);
+  };
+  link.id = 'filter-link';
+  threadObj.element.appendChild(link);
+}
+
+function setIsBotThread(threadId) {
+  const threadObj = getThread(threadId);
+  if (threadObj) {
+    threadObj.element.style.borderColor = 'red';
+  }
+}
+
+function filterThreadById(threadId) {
+  const threadObj = getThread(threadId);
+  if (threadObj) {
+    threadObj.element.remove();
+  } else {
+    console.log("Failed to filter thread " + threadId);
+  }
+}
+
+function addFilterThread(threadId) {
+  const threadObj = getThread(threadId);
+  if (!threadObj) {
+    console.log("Failed to add filter thread " + threadId);
+    return;
+  }
+
+  const thumb = getThumbImg(t.element);
+
+  chrome.runtime.sendMessage(getExtensionId(), {
+    action: 'filterThread',
+    url: thumb?.src,
+    teaser: threadObj.getTeaserText()
+  });
+
+  try {
+    threadObj.element.remove();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 function addFilterHash(thumbImg, md5) {
   chrome.runtime.sendMessage(getExtensionId(), {
     action: 'updateContentFilter',
@@ -62,7 +121,21 @@ function addFilterHashForAllRelatedContent(basePost) {
   }
 }
 
-function addFilterContentLink(thumbImg, dataMD5) {
+function downloadImages(basePost, thumbImg) {
+  var thumbs = thread.getThumbs(postContainer(basePost));
+  var imgUrls = [];
+
+  for (i = 0; i < thumbs.length; i++) {
+    imgUrls.push(thumbs[i].href);
+  }
+
+  chrome.runtime.sendMessage(getExtensionId(), {
+    action: 'downloadImages',
+    urls: imgUrls
+  });
+}
+
+function addContentLinks(thumbImg, dataMD5) {
   if (!dataMD5) {
     return;
   }
@@ -99,6 +172,14 @@ function addFilterContentLink(thumbImg, dataMD5) {
     };
     link.id = 'filter-link-2';
     fileText.appendChild(link);
+
+    link = document.createElement('a');
+    link.textContent = " Download All";
+    link.onclick = function(e) {
+      downloadImages(thisPost);
+    };
+    link.id = 'download-link';
+    fileText.appendChild(link);
   }
 }
 
@@ -112,7 +193,7 @@ function handleUnseenContent(dataMD5) {
   //   }
   // }
 
-  addFilterContentLink(thumbImg, dataMD5);
+  addContentLinks(thumbImg, dataMD5);
 }
 
 function handleFilteredContent(dataMD5) {
@@ -140,19 +221,8 @@ function setIsSeenContent(dataMD5, isMatchStored) {
     stalePost.style.borderColor = 'orange';
   }
 
-  addFilterContentLink(thumbImg, dataMD5);
+  addContentLinks(thumbImg, dataMD5);
   setContentStats();
-}
-
-function setIsBotThread(dataId) {
-  const thumb = getElementByDataId(dataId);
-
-  if (!thumb) {
-    return
-  }
-
-  const botThread = getThreadFromElement(thumb)
-  botThread.style.borderColor = 'red';
 }
 
 if (!n_scripts) var n_scripts = 0;
@@ -639,6 +709,10 @@ class Thread4C0 {
     return this.element.querySelector('.teaser');
   }
 
+  getTeaserText() {
+    return this.getTeaser()?.textContent;
+  }
+
   setBackgroundColor(color) {
     this.element.style.backgroundColor = color;
   }
@@ -1045,16 +1119,17 @@ function togglePostDiffHighlight() {
   local('postDiffHighlight', !isOn);
 }
 
-function checkForBotAndShillThreads() {
+function testThreads() {
   const threads = getThreads()
   for (t of threads) {
     const thumb = getThumbImg(t.element);
     if (t.id && thumb) {
       chrome.runtime.sendMessage(getExtensionId(), {
-        action: 'testHashForThreadImage',
+        action: 'testThread',
         url: thumb.src,
         dataId: thumb.getAttribute('data-id'),
-        threadId: t.id
+        threadId: t.id,
+        teaser: t.getTeaserText()
       })
     }
   }
@@ -1070,6 +1145,18 @@ function getThreads() {
   }
 
   return threads
+}
+
+function getThread(threadId) {
+  const threads = getThreads();
+
+  for (let t of threads) {
+    if (t?.id === threadId) {
+      return t;
+    }
+  }
+
+  return null;
 }
 
 function getThreadFromElement(el) {
@@ -1240,7 +1327,7 @@ if (boardBasePage || catalogPage) {
 if (catalogPage) {
   if (settingOn('catalogFilter')) catalogFilter();
   if (settingOn('runTextTransforms')) transformTeaserTexts();
-  if (settingOn('testHash')) checkForBotAndShillThreads();
+  if (settingOn('testHash')) testThreads();
 }
 
 [].slice.call(document.querySelectorAll('div[class^=ad]'))
