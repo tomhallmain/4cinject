@@ -17,6 +17,15 @@ function messageIn(message) {
 
       if (tabId) {
         importRemainingScripts();
+        if (!window.localStorage['threadFilter']) {
+          window.localStorage['threadFilter'] = message.threadFilter;
+          console.log('Thread filter is set.')
+        }
+        if (!window.localStorage['textTransforms']) {
+          window.localStorage['textTransforms'] = message.textTransforms;
+          // not ideal but the text transforms have a dedicated function on the base page
+          chrome.runtime.sendMessage({action: "setTextTransforms", filterSettings: {textTransforms: message.textTransforms}});
+        }
       } else {
         console.error("Failed to get tab ID.");
       }

@@ -359,7 +359,7 @@ function engagePost(post, thumb) {
   if (!post) return false;
   if (thumb) {
     const {type, content, expanded} = postContent(post, thumb);
-    const webm = type == 'webm'
+    const webm = type == 'webm' || type == 'mp4'
     var engageContent = content
     if (!expanded && settingOn('autoExpand')) {
       if (webm) {
@@ -651,7 +651,7 @@ function thumbHidden(thumb) {
 }
 
 function webmThumbImg(thumbImg) {
-  return thumbImg ? /.webm$/.test(thumbImg.parentElement.href) : false;
+  return thumbImg ? /.(webm|mp4)$/.test(thumbImg.parentElement.href) : false;
 }
 
 function getCloseLink(video) {

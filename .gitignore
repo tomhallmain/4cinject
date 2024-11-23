@@ -2,6 +2,7 @@ ext/extensionID.js
 ext/md5s.json
 ext/sha1s.json
 ext/filteredMD5s.json
-filters/*
+ext/filter.json
+ext/filters/*
 *.swp
 *.DS_Store

@@ -146,7 +146,7 @@ function buttonPressed(action, isActiveTab) {
   }
 }
 
-function get(data) {
+function startGetDataForInput(data) {
   sendMessageWithAction('get' + data);
 }
 
@@ -199,9 +199,9 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-get('Volume');
-get('ThreadFilter');
-get('TextTransforms');
+startGetDataForInput('Volume');
+startGetDataForInput('ThreadFilter');
+startGetDataForInput('TextTransforms');
 getFromBackground('ContentFilter');
 
 addEnterKeyEventListenerToInput(select('.contentFilter'));

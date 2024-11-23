@@ -404,12 +404,31 @@ class ThreadPostIDsCache {
 }
 
 
+// Globals
+
 var hashesCache = new HashesCache();
 var hashesThreadsCache = new HashesThreadsCache(hashesCache);
 var threadPostIDsCache = new ThreadPostIDsCache();
 var filteredIDs = [];
 var filteredFlags = [];
 
+// Special handling for thread filter and text transforms which are stored in local storage,
+// but have to be injected if it is the first time opening the site this session.
+var threadFilter = []
+var textTransforms = ""
+function setThreadFilter(value) {
+  threadFilter = value;
+}
+function setTextTransforms(value) {
+  textTransforms = value;
+}
+try {
+  fetch("filters/filter.json").then(response => response.json()).then((data) => setThreadFilter(data));
+  fetch("filters/transforms.txt").then(response => response.text()).then((data) => setTextTransforms(data));
+} catch (e) {
+  console.log("Failed to load filter JSON or text transforms file! Ensure they are placed in filters directory as explained in README.");
+  console.error(e);
+}
 
 importScripts('spark-md5/spark-md5.min.js', 'helpers.js');
 
@@ -563,7 +582,9 @@ function setupInternalScripts(tabId) {
   console.log("returning tab id to content script: " + tabId);
   sendMessage({
     action: "importRemainingScripts",
-    data: tabId
+    data: tabId,
+    threadFilter: threadFilter,
+    textTransforms: textTransforms
   }, tabId);
 //  loadScriptToPage('reporter.js', tabId);
   loadScriptToPage('base0.js', tabId);

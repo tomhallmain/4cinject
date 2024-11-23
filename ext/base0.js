@@ -1041,6 +1041,7 @@ function setTextTransforms(transformsString) {
   local('runTextTransforms', runTransforms)
   if (!threadPage || !runTransforms) return;
   window.location.reload();
+  console.log('Text transforms is set.');
 }
 
 function getTextTransforms() {
@@ -1222,7 +1223,7 @@ function thumbHidden(thumb) {
 }
 
 function webmThumbImg(thumbImg) {
-  return /.webm$/.test(thumbImg.parentElement.href);
+  return /.(webm|mp4)$/.test(thumbImg.parentElement.href);
 }
 
 function getCloseLink(video) {
