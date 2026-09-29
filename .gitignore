@@ -4,5 +4,10 @@ ext/sha1s.json
 ext/filteredMD5s.json
 ext/filter.json
 ext/filters/*
+filters/*
+
+*.log
 *.swp
 *.DS_Store
+
+node_modules/

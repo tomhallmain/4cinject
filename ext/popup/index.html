@@ -68,14 +68,42 @@
 
 		<br>
 
-	  <p>Set Thread Filter (regex):</p>
-    <textarea placeholder="YLYL" class="threadFilter" id="threadFilter" rows=4 cols="50"></textarea>
+		<p>Set Thread Filters (one regex per line, saved when the box loses focus):</p>
+		<textarea placeholder="YLYL" class="threadFilter" id="threadFilter" rows=4 cols="50"></textarea>
+		<p class="status" id="threadFilterStatus" role="status"></p>
 
-	  <p>Set Post Text Transforms:</p>
-    <textarea placeholder="regex1==replacement1&#10;regex2==replacement2" class="textTransforms" id="textTransforms" rows=4 cols="50"></textarea>
+		<p>Set Post Text Transforms:</p>
+		<textarea placeholder="regex1==replacement1&#10;regex2==replacement2" class="textTransforms" id="textTransforms" rows=4 cols="50"></textarea>
 
-	  <p>Edit Content Filter (Hash):</p>
-    <textarea placeholder="" class="contentFilter" id="contentFilter" rows=4 cols="50"></textarea>
+		<p>Edit Content Filter (one hash per line):</p>
+		<textarea placeholder="Loading..." class="contentFilter" id="contentFilter" rows=4 cols="50"></textarea>
+
+		<div class="btn-group" style="width:100%">
+			<button type="button" id="contentFilterSave" style="width:50%" disabled>
+				Save Content Filter
+			</button>
+			<button type="button" id="contentFilterRestore" style="width:50%" disabled>
+				Load Previous Version
+			</button>
+		</div>
+
+		<div class="confirm" id="contentFilterConfirm" hidden>
+			<p id="contentFilterSummary"></p>
+			<div id="contentFilterTyped" hidden>
+				<label for="contentFilterTypedInput" id="contentFilterTypedLabel"></label>
+				<input type="text" id="contentFilterTypedInput" inputmode="numeric" autocomplete="off">
+			</div>
+			<div class="btn-group" style="width:100%">
+				<button type="button" id="contentFilterConfirmButton" style="width:50%">
+					Confirm
+				</button>
+				<button type="button" id="contentFilterCancel" style="width:50%">
+					Cancel
+				</button>
+			</div>
+		</div>
+
+		<p class="status" id="contentFilterStatus" role="status"></p>
 
 		<button type="button" class="downloadFilteredHashes" style="width: 100%;">
 			Download Content Filter (Hash)
@@ -84,4 +112,6 @@
 	</body>
 </html>
 
+<script type='text/javascript' src="../shared/actions.js"></script>
+<script type='text/javascript' src="../shared/util.js"></script>
 <script type='text/javascript' src="popup.js"></script>

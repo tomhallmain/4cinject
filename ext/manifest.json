@@ -2,19 +2,46 @@
   "name": "4CIJ",
   "version": "1.0.1",
   "manifest_version": 3,
-  "description": "",
+  "description": "Keyboard navigation, thread filtering and seen-content tracking for 4chan boards.",
   "homepage_url": "https://4chan.org",
   "background": {
-    "service_worker": "background-wrapper.js"
+    "service_worker": "background/worker.js"
   },
-  "content_scripts": [{
-    "matches": [
-      "https://boards.4chan.org/*",
-      "https://boards.4channel.org/*"
-    ],
-    "js": [ "loader.js" ],
-    "persistent": true
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://boards.4chan.org/*",
+        "https://boards.4channel.org/*"
+      ],
+      "js": [ "page/bridge.js" ],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://boards.4chan.org/*",
+        "https://boards.4channel.org/*"
+      ],
+      "js": [
+        "shared/actions.js",
+        "shared/util.js",
+        "content/settings.js",
+        "content/dom.js",
+        "content/marks.js",
+        "content/model.js",
+        "content/messaging.js",
+        "content/text-transforms.js",
+        "content/media.js",
+        "content/navigation.js",
+        "content/reports.js",
+        "content/thread-page.js",
+        "content/catalog-page.js",
+        "content/commands.js",
+        "content/main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_icon": "icon.png",
     "default_title": "4CIJ",
@@ -24,35 +51,12 @@
     "128": "icon.png"
   },
   "permissions": [
-    "activeTab",
     "downloads",
-    "scripting",
     "storage"
   ],
   "host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
-  "web_accessible_resources": [{
-    "resources": [
-      "base.js",
-      "extensionID.js",
-      "helpers.js",
-      "agent.js",
-      "reporter.js",
-      "popup/popup.js",
-      "md5s.json",
-      "filteredMD5s.json"
-    ],
-    "matches": [
-      "https://boards.4chan.org/*",
-      "https://boards.4channel.org/*"
-    ]
-  }],
-  "externally_connectable": {
-    "matches": [
-      "https://boards.4chan.org/*",
-      "https://boards.4channel.org/*"
-    ]
-  }
+    "https://*.4chan.org/*",
+    "https://*.4channel.org/*",
+    "https://*.4cdn.org/*"
+  ]
 }

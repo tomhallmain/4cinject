@@ -1,0 +1,12 @@
+{
+  "name": "4cinject",
+  "private": true,
+  "description": "Dev tooling only; the extension in ext/ has no build step.",
+  "scripts": {
+    "lint": "eslint ext"
+  },
+  "devDependencies": {
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0"
+  }
+}
