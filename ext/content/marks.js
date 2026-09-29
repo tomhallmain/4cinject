@@ -8,6 +8,7 @@ const Marks = {
     seenStored: 'red',
     seenSession: 'orange',
     newPost: '#3f4b63',
+    newThread: '#81a2be',
     botThread: 'red',
     subthread: 'gray',
     catalogChallenge: 'teal',
@@ -28,6 +29,13 @@ const Marks = {
   markNewPost(post) {
     post.style.backgroundColor = Marks.COLORS.newPost;
     post.dataset.cijNew = '';
+  },
+
+  // An outline, since catalog threads' background and border colors already
+  // carry the catalog filter and bot-thread marks.
+  markNewThread(threadElement) {
+    threadElement.style.outline = '2px solid ' + Marks.COLORS.newThread;
+    threadElement.dataset.cijNew = '';
   },
 
   markBotThread(threadElement) {

@@ -29,6 +29,11 @@ class PersistentMap {
     this.scheduleSave();
   }
 
+  delete(key) {
+    delete this.map[key];
+    this.scheduleSave();
+  }
+
   values() {
     return Object.values(this.map);
   }

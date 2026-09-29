@@ -24,6 +24,15 @@ const handlers = {
     return {newPostIds};
   },
 
+  [Actions.FIND_NEW_THREAD_IDS]: async (request) => {
+    if (!request.url) return {};
+    const newThreadIds = await catalogThreadIdsCache.findNewIds(request.url, request.threadIds);
+    console.log(newThreadIds.length > 0
+        ? "New catalog thread IDs: " + newThreadIds
+        : "Initial catalog save or no new thread IDs found.");
+    return {newThreadIds};
+  },
+
   [Actions.FILTER_THREAD]: async (request) => {
     await hashesThreadsCache.filterThread(request.url, request.teaser?.toLowerCase());
     console.log("Filtered a thread");

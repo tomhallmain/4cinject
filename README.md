@@ -40,6 +40,8 @@ After changing any file in `ext`, reload the extension on
       teaser filters. Later catalog loads remove threads whose teaser
       contains a filtered teaser text.
   - Applies text transforms to thread teasers.
+  - With **HighlightNew** on, outlines threads that were not in the catalog
+    at its previous load.
 - **Thread:**
   - Shows the thread's best "digits" (post IDs ending in repeated digits)
     below the top navigation links.
@@ -108,7 +110,7 @@ Settings are stored in the site's local storage, so `4chan.org` and
 | Subthreads | on | Nest replies under the posts they reply to |
 | CatalogFilter | on | Apply thread filters and colors on the catalog |
 | TestHash | on | Check content and catalog thread images against seen and filtered hashes |
-| HighlightNew | on | Highlight posts that are new since the last load of the thread |
+| HighlightNew | on | Highlight posts that are new since the last load of the thread, and catalog threads that are new since the last load of the catalog |
 | Volume | 50% | Volume of expanded videos |
 | Thread filters | none | Regexes; catalog threads whose text matches any of them are removed |
 | Text transforms | none | See below |

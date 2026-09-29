@@ -10,6 +10,7 @@ const CatalogPage = {
       () => Settings.isOn('catalogFilter') && CatalogPage.filter(),
       () => TextTransforms.isEnabled() && CatalogPage.transformTeaserTexts(),
       () => Settings.isOn('testHash') && CatalogPage.testThreads(),
+      () => Settings.isOn('postDiffHighlight') && CatalogPage.highlightNewThreads(),
     ];
     for (const step of steps) {
       try {
@@ -75,6 +76,21 @@ const CatalogPage = {
         console.log("Could not get message or make replacements for thread teaser: ");
         console.log(e);
       }
+    }
+  },
+
+  // Outlines threads that were not in this catalog at its previous load. The
+  // baseline includes threads removed by the filters, since Page.getThreads()
+  // was collected before they were removed.
+  async highlightNewThreads() {
+    const threadIds = Page.getThreads().map(t => t.id).filter(id => id);
+    const response = await Messaging.request(Actions.FIND_NEW_THREAD_IDS, {
+      url: Page.initialLink,
+      threadIds,
+    });
+    for (const threadId of response?.newThreadIds || []) {
+      const threadObj = Page.getThread(threadId);
+      if (threadObj?.element) Marks.markNewThread(threadObj.element);
     }
   },
 

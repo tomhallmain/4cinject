@@ -15,6 +15,9 @@ class KnownIdsCache {
     this.knownIds.trim();
 
     const knownIds = this.knownIds.get(pageKey);
+    // Re-inserting moves the key to the end, so trim() drops the pages
+    // loaded least recently.
+    this.knownIds.delete(pageKey);
     this.knownIds.set(pageKey, ids);
     if (!knownIds || knownIds.length === 0) {
       return [];
@@ -24,3 +27,5 @@ class KnownIdsCache {
 }
 
 const threadPostIdsCache = new KnownIdsCache('threadKnownPostIdsMap', 300000);
+// A catalog's baseline is about 150 thread IDs of ~16 characters (~5 KB).
+const catalogThreadIdsCache = new KnownIdsCache('catalogKnownThreadIdsMap', 100000);

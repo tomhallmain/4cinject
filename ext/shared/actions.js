@@ -7,6 +7,7 @@ const Actions = Object.freeze({
   TEST_MD5: 'testMD5',
   TEST_THREAD: 'testThread',
   FIND_NEW_POST_IDS: 'findNewPostIDsForThread',
+  FIND_NEW_THREAD_IDS: 'findNewThreadIDsForCatalog',
   FILTER_THREAD: 'filterThread',
   UPDATE_CONTENT_FILTER: 'updateContentFilter',
   DOWNLOAD_IMAGES: 'downloadImages',
