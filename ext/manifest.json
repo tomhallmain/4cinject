@@ -1,6 +1,6 @@
 {
   "name": "4CIJ",
-  "version": "1.0.1",
+  "version": "2.0.1",
   "manifest_version": 3,
   "description": "Keyboard navigation, thread filtering and seen-content tracking for 4chan boards.",
   "homepage_url": "https://4chan.org",
